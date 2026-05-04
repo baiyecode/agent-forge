@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * ClassName: HealthController
  * Package: com.baiye.agentforge.controller
- * Description:
+ * Description: 健康检查
  *
  * @Author 白夜
  * @Create 2026/3/20 14:05
