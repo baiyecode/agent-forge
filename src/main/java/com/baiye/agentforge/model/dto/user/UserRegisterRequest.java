@@ -10,7 +10,7 @@ import java.io.Serializable;
  * Description: 用户注册请求
  *
  * @Author 白夜
- * @Create 2026/5/3 20:16
+ * @Create 2026/5/3 20:18
  * @Version 1.0
  */
 @Data

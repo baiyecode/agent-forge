@@ -9,7 +9,7 @@ import java.io.Serializable;
 * Package: com.baiye.agentforge.model.dto.user
 * Description:
 * @Author 白夜
-* @Create 2026/5/3 20:41
+* @Create 2026/5/3 21:01
 * @Version 1.0
 */
 @Data

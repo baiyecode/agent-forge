@@ -6,7 +6,7 @@ package com.baiye.agentforge.constant;
  * Description: 用户常量
  *
  * @Author 白夜
- * @Create 2026/5/3 20:32
+ * @Create 2026/5/3 20:36
  * @Version 1.0
  */
 public interface UserConstant {

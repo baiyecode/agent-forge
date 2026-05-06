@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
  * Description: 权限校验注解
  *
  * @Author 白夜
- * @Create 2026/5/3 20:37
+ * @Create 2026/5/3 20:38
  * @Version 1.0
  */
 @Target(ElementType.METHOD) //注解作用于方法
