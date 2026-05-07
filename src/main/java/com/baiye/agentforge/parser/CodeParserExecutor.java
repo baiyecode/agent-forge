@@ -7,7 +7,7 @@ import com.baiye.agentforge.model.enums.CodeGenTypeEnum;
 /**
  * ClassName: CodeParserExecutor
  * Package: com.baiye.agentforge.parser
- * Description: 代码解析执行器,根据代码生成类型执行相应的解析逻辑
+ * Description: 代码解析执行器,根据代码生成类型执行相应的解析逻辑（策略模式）
  *
  * @Author 白夜
  * @Create 2026/5/6 15:35

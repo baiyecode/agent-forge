@@ -17,17 +17,30 @@ import com.baiye.agentforge.model.enums.CodeGenTypeEnum;
  */
 public class HtmlCodeFileSaverTemplate extends CodeFileSaverTemplate<HtmlCodeResult> {
 
+    /**
+     * 获取代码类型
+     * @return
+     */
     @Override
     protected CodeGenTypeEnum getCodeType() {
         return CodeGenTypeEnum.HTML;
     }
 
+    /**
+     * 保存文件
+     * @param result
+     * @param baseDirPath
+     */
     @Override
     protected void saveFiles(HtmlCodeResult result, String baseDirPath) {
         // 保存 HTML 文件
         writeToFile(baseDirPath, "index.html", result.getHtmlCode());
     }
 
+    /**
+     * 验证输入参数
+     * @param result
+     */
     @Override
     protected void validateInput(HtmlCodeResult result) {
         super.validateInput(result);

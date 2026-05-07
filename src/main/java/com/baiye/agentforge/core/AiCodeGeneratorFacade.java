@@ -83,20 +83,24 @@ public class AiCodeGeneratorFacade {
 
     /**
      * 通用流式代码处理方法
+     * AI 生成服务返回一个 Flux<String>，这只是一种 构建好的流水线声明，尚未开始执行。
+     * 这个 Flux<String> 表示：当有人订阅它时，会以 流式方式 逐块（chunk）输出代码片段，每块是一个 String。
+     * 例如 AI 依次返回 "<html>"、"<body>"、"<p>hello</p>"、"</body>"、"</html>" 五个字符串片段。
      *
      * @param codeStream  代码流
      * @param codeGenType 代码生成类型
      * @return 流式响应
      */
     private Flux<String> processCodeStream(Flux<String> codeStream, CodeGenTypeEnum codeGenType) {
-        StringBuilder codeBuilder = new StringBuilder();
+        StringBuilder codeBuilder = new StringBuilder();// 用于收集代码片段
         return codeStream.doOnNext(chunk -> {
-            // 实时收集代码片段
+            // 每次收到一个 chunk(AI 每次返回的代码片段字符串)，就把它追加到 codeBuilder 中
             codeBuilder.append(chunk);
-        }).doOnComplete(() -> {
+        }).doOnComplete(() -> { //流结束后统一处理
             // 流式返回完成后保存代码
             try {
                 String completeCode = codeBuilder.toString();
+                //策略分发执行器，根据 codeGenType 选择并调用对应的 CodeParser 解析方法
                 // 使用执行器解析代码
                 Object parsedResult = CodeParserExecutor.executeParser(completeCode, codeGenType);
                 // 使用执行器保存代码
@@ -133,6 +137,15 @@ public class AiCodeGeneratorFacade {
             }
         };
     }
+
+    /**
+     * yield 的含义
+     * 在传统 switch 语句中，break 用于跳出；但 switch 表达式必须产生一个值。
+     * 在箭头后面如果是一个代码块 { }，就需要用 yield 来指定该分支的返回值。
+     * yield processCodeStream(...) 表示：将 processCodeStream 返回的 Flux<String> 作为这个 case 的结果。
+     * 如果箭头后面只有一个表达式（没有大括号），可以省略 yield，例如：case SOME -> someMethod();，
+     * 但这里因为要先声明局部变量 codeStream，所以必须用块 + yield。
+     */
 
 
 }

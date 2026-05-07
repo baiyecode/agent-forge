@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 /**
  * ClassName: CodeFileSaverTemplate
  * Package: com.baiye.agentforge.saver
- * Description: 代码文件保存器模板
+ * Description: 代码文件保存器模板(模板方法模式）
  *
  * @Author 白夜
  * @Create 2026/5/6 15:40
@@ -52,6 +52,7 @@ public abstract class CodeFileSaverTemplate<T> {
         }
     }
 
+    //用 final 保护，避免子类破坏文件写入的标准行为。
     /**
      * 构建唯一目录路径
      *
@@ -79,6 +80,7 @@ public abstract class CodeFileSaverTemplate<T> {
         }
     }
 
+    //两个抽象方法（子类必须实现）
     /**
      * 获取代码类型（由子类实现）
      *

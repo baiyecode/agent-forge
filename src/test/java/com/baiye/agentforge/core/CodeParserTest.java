@@ -15,7 +15,7 @@ class CodeParserTest {
     void parseHtmlCode() {
         String codeContent = """
                 随便写一段描述：
-                html 格式
+                ```html
                 <!DOCTYPE html>
                 <html>
                 <head>
@@ -37,7 +37,7 @@ class CodeParserTest {
     void parseMultiFileCode() {
         String codeContent = """
                 创建一个完整的网页：
-                html 格式
+                ```html
                 <!DOCTYPE html>
                 <html>
                 <head>
@@ -50,7 +50,7 @@ class CodeParserTest {
                 </body>
                 </html>
 
-                css 格式
+                ```css
                 h1 {
                     color: blue;
                     text-align: center;

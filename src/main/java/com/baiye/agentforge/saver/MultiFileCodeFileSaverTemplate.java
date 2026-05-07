@@ -18,11 +18,20 @@ import cn.hutool.core.util.StrUtil;
  */
 public class MultiFileCodeFileSaverTemplate extends CodeFileSaverTemplate<MultiFileCodeResult> {
 
+    /**
+     * 获取代码类型
+     * @return
+     */
     @Override
     public CodeGenTypeEnum getCodeType() {
         return CodeGenTypeEnum.MULTI_FILE;
     }
 
+    /**
+     * 保存文件
+     * @param result
+     * @param baseDirPath
+     */
     @Override
     protected void saveFiles(MultiFileCodeResult result, String baseDirPath) {
         // 保存 HTML 文件
@@ -33,6 +42,10 @@ public class MultiFileCodeFileSaverTemplate extends CodeFileSaverTemplate<MultiF
         writeToFile(baseDirPath, "script.js", result.getJsCode());
     }
 
+    /**
+     * 验证输入参数
+     * @param result
+     */
     @Override
     protected void validateInput(MultiFileCodeResult result) {
         super.validateInput(result);

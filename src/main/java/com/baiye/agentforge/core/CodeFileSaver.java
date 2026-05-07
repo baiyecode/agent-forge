@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
  * @Create 2026/5/6 14:46
  * @Version 1.0
  */
+@Deprecated //过时弃用
 public class CodeFileSaver {
 
     // 文件保存根目录,System.getProperty("user.dir")：获取 JVM 启动时的工作目录（通常是项目根目录）。
