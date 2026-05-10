@@ -1,10 +1,12 @@
 package com.baiye.agentforge.service;
 
 import com.baiye.agentforge.model.dto.app.AppQueryRequest;
+import com.baiye.agentforge.model.entity.User;
 import com.baiye.agentforge.model.vo.AppVO;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
 import com.baiye.agentforge.model.entity.App;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -39,4 +41,21 @@ public interface AppService extends IService<App> {
      * @return 查询条件
      */
     QueryWrapper getQueryWrapper(AppQueryRequest appQueryRequest);
+
+    /**
+     * 调用门面生成代码
+     * @param appId
+     * @param message
+     * @param loginUser
+     * @return
+     */
+    Flux<String> chatToGenCode(Long appId, String message, User loginUser);
+
+    /**
+     * 部署应用
+     * @param appId
+     * @param loginUser
+     * @return
+     */
+    String deployApp(Long appId, User loginUser);
 }

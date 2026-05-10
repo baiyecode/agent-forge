@@ -2,6 +2,7 @@ package com.baiye.agentforge.controller;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.baiye.agentforge.annotation.AuthCheck;
 import com.baiye.agentforge.common.BaseResponse;
 import com.baiye.agentforge.common.DeleteRequest;
@@ -11,10 +12,7 @@ import com.baiye.agentforge.constant.UserConstant;
 import com.baiye.agentforge.exception.BusinessException;
 import com.baiye.agentforge.exception.ErrorCode;
 import com.baiye.agentforge.exception.ThrowUtils;
-import com.baiye.agentforge.model.dto.app.AppAddRequest;
-import com.baiye.agentforge.model.dto.app.AppAdminUpdateRequest;
-import com.baiye.agentforge.model.dto.app.AppQueryRequest;
-import com.baiye.agentforge.model.dto.app.AppUpdateRequest;
+import com.baiye.agentforge.model.dto.app.*;
 import com.baiye.agentforge.model.entity.App;
 import com.baiye.agentforge.model.entity.User;
 import com.baiye.agentforge.model.enums.CodeGenTypeEnum;
@@ -25,10 +23,15 @@ import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 应用 控制层。
@@ -300,4 +303,67 @@ public class AppController {
 
 
     // endregion
+
+    /**
+     * 应用聊天生成代码（流式 SSE）
+     * produces = MediaType.TEXT_EVENT_STREAM_VALUE：告诉客户端该端点返回的内容类型为 text/event-stream，即 SSE 格式。
+     * @param appId   应用 ID
+     * @param message 用户消息
+     * @param request 请求对象
+     * @return 生成结果流
+     */
+    @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId,
+                                                       @RequestParam String message,
+                                                       HttpServletRequest request) {
+        // 参数校验
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");
+        ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户消息不能为空");
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        // 调用服务生成代码（流式）
+        Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser);
+        // 转换为 ServerSentEvent 格式
+        return contentFlux
+                .map(chunk -> {
+                    // 将内容包装成JSON对象
+                    //"d" 完全是自己取的，它是一个自定义的 JSON 字段名，没有任何硬性规定，开发者可以根据团队约定或者前后端协议任意起名。
+                    //常见约定："d" → data   "c" → content   "v" → value
+                    Map<String, String> wrapper = Map.of("d", chunk);
+                    String jsonData = JSONUtil.toJsonStr(wrapper);
+                    return ServerSentEvent.<String>builder()
+                            .data(jsonData)
+                            .build();
+                })
+                .concatWith(Mono.just( //.concatWith() 是 Reactor 操作符，会在上游 Flux 正常完成后，再追加一个元素。
+                        // 发送结束事件,所有片段发完后，服务器推送 event:done 事件
+                        ServerSentEvent.<String>builder()
+                                .event("done")
+                                .data("")
+                                .build()
+                ));
+    }
+
+
+    /**
+     * 应用部署
+     *
+     * @param appDeployRequest 部署请求
+     * @param request          请求
+     * @return 部署 URL
+     */
+    @PostMapping("/deploy")
+    public BaseResponse<String> deployApp(@RequestBody AppDeployRequest appDeployRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(appDeployRequest == null, ErrorCode.PARAMS_ERROR);
+        Long appId = appDeployRequest.getAppId();
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用 ID 不能为空");
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        // 调用服务部署应用
+        String deployUrl = appService.deployApp(appId, loginUser);
+        return ResultUtils.success(deployUrl);
+    }
+
+
+
 }

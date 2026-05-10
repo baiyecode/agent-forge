@@ -2,12 +2,17 @@ package com.baiye.agentforge.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baiye.agentforge.constant.AppConstant;
+import com.baiye.agentforge.core.AiCodeGeneratorFacade;
 import com.baiye.agentforge.exception.BusinessException;
 import com.baiye.agentforge.exception.ErrorCode;
 import com.baiye.agentforge.exception.ThrowUtils;
 import com.baiye.agentforge.model.dto.app.AppQueryRequest;
 import com.baiye.agentforge.model.entity.User;
+import com.baiye.agentforge.model.enums.CodeGenTypeEnum;
 import com.baiye.agentforge.model.vo.AppVO;
 import com.baiye.agentforge.model.vo.UserVO;
 import com.baiye.agentforge.service.UserService;
@@ -18,7 +23,10 @@ import com.baiye.agentforge.mapper.AppMapper;
 import com.baiye.agentforge.service.AppService;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
+import java.io.File;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +43,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private AiCodeGeneratorFacade aiCodeGeneratorFacade;
 
     @Override
     public AppVO getAppVO(App app) {
@@ -59,6 +70,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
      * 根据userId集合批量查询所有用户信息
      * 构建 Map 映射关系 userId=>UserVO
      * 一次性组装所有AppVO，根据userId从Map中取到需要的用户信息
+     *
      * @param appList 应用列表
      * @return
      */
@@ -112,4 +124,95 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
                 .eq("userId", userId)
                 .orderBy(sortField, "ascend".equals(sortOrder));
     }
+
+
+    @Override
+    public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
+        // 1. 参数校验
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用 ID 不能为空");
+        ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户消息不能为空");
+        // 2. 查询应用信息
+        App app = this.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        // 3. 验证用户是否有权限访问该应用，仅本人可以生成代码
+        if (!app.getUserId().equals(loginUser.getId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限访问该应用");
+        }
+        // 4. 获取应用的代码生成类型
+        String codeGenTypeStr = app.getCodeGenType();
+        CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(codeGenTypeStr);
+        if (codeGenTypeEnum == null) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型");
+        }
+        // 5. 调用 AI 生成代码
+        return aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
+    }
+
+
+    @Override
+    public String deployApp(Long appId, User loginUser) {
+        // 1. 参数校验
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用 ID 不能为空");
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
+        // 2. 查询应用信息
+        App app = this.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        // 3. 验证用户是否有权限部署该应用，仅本人可以部署
+        if (!app.getUserId().equals(loginUser.getId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限部署该应用");
+        }
+        // 4. 获取或生成唯一的 deployKey
+        String deployKey = app.getDeployKey();
+        if (StrUtil.isBlank(deployKey)) {
+            deployKey = generateUniqueDeployKey();
+        }
+        // 5. 获取代码生成类型，构建源目录路径
+        String codeGenType = app.getCodeGenType();
+        String sourceDirName = codeGenType + "_" + appId;
+        String sourceDirPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + sourceDirName;
+        // 6. 检查源目录是否存在
+        File sourceDir = new File(sourceDirPath);
+        //源目录不存在 或者 虽然存在但不是目录，则抛异常。
+        if (!sourceDir.exists() || !sourceDir.isDirectory()) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "应用代码不存在，请先生成代码");
+        }
+        // 7. 复制文件到部署目录
+        String deployDirPath = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + deployKey;
+        //hutool 工具方法，将源目录下的内容递归复制到目标目录。第三个参数 true 表示如果目标已存在则覆盖。
+        try {
+            FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "部署失败：" + e.getMessage());
+        }
+        // 8. 更新应用的 deployKey 和部署时间
+        App updateApp = new App();
+        updateApp.setId(appId);
+        updateApp.setDeployKey(deployKey);
+        updateApp.setDeployedTime(LocalDateTime.now());
+        boolean updateResult = this.updateById(updateApp);//执行数据库更新，返回 boolean 表示是否成功。
+        ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
+        // 9. 返回可访问的 URL
+        return String.format("%s/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
+    }
+
+
+    // 新增私有方法：生成唯一 deployKey，带查重重试
+    private String generateUniqueDeployKey() {
+        int maxRetries = 5;                     // 最多重试5次
+        for (int i = 0; i < maxRetries; i++) {
+            String candidate = RandomUtil.randomString(6);
+            // 查询是否已存在（排除自己）
+            long count = this.count( //this.count(...) 的结果就是数据库中 deploy_key 等于该候选值的记录条数。
+                    QueryWrapper.create()
+                            .where(App::getDeployKey).eq(candidate) //WHERE deploy_key = 'candidate'
+            );
+            if (count == 0) {
+                return candidate;
+            }
+        }
+        // 重试耗尽仍冲突，抛出异常
+        throw new BusinessException(ErrorCode.SYSTEM_ERROR, "系统繁忙，部署标识生成失败，请稍后重试");
+    }
+
+
 }
