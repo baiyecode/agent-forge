@@ -16,7 +16,6 @@ import reactor.core.publisher.Flux;
  */
 public interface AiCodeGeneratorService {
 
-    String generateCode(String userMessage);
 
     /**
      * 生成 HTML 代码

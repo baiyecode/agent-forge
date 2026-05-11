@@ -18,6 +18,7 @@ import com.baiye.agentforge.model.entity.User;
 import com.baiye.agentforge.model.enums.CodeGenTypeEnum;
 import com.baiye.agentforge.model.vo.AppVO;
 import com.baiye.agentforge.service.AppService;
+import com.baiye.agentforge.service.ChatHistoryService;
 import com.baiye.agentforge.service.UserService;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
