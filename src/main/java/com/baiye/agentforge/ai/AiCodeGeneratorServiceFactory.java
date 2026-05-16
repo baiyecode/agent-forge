@@ -1,5 +1,6 @@
 package com.baiye.agentforge.ai;
 
+import com.baiye.agentforge.service.ChatHistoryService;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
@@ -29,6 +30,9 @@ public class AiCodeGeneratorServiceFactory {
 
     @Resource
     private ChatModel chatModel;
+
+    @Resource
+    private ChatHistoryService chatHistoryService;
 
     @Resource
     private StreamingChatModel streamingChatModel;
@@ -72,12 +76,15 @@ public class AiCodeGeneratorServiceFactory {
                 .chatMemoryStore(redisChatMemoryStore)
                 .maxMessages(20)
                 .build();
+        // 从数据库加载历史对话到记忆中
+        chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 20);
         return AiServices.builder(AiCodeGeneratorService.class)
                 .chatModel(chatModel)
                 .streamingChatModel(streamingChatModel)
                 .chatMemory(chatMemory)
                 .build();
     }
+
 
 
     /**

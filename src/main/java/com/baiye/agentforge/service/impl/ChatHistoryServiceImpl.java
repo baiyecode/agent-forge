@@ -1,5 +1,6 @@
 package com.baiye.agentforge.service.impl;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baiye.agentforge.constant.UserConstant;
 import com.baiye.agentforge.exception.ErrorCode;
@@ -15,11 +16,17 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.baiye.agentforge.mapper.ChatHistoryMapper;
 import com.baiye.agentforge.service.ChatHistoryService;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 对话历史 服务层实现。
@@ -27,6 +34,7 @@ import java.time.LocalDateTime;
  * @author <a href="https://github.com/baiyecode">白夜</a>
  */
 @Service
+@Slf4j
 public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatHistory> implements ChatHistoryService {
 
 
@@ -35,8 +43,9 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     private AppService appService;
 
 
+
     /**
-     * 获取查询包装类
+     * 获取对话历史查询条件
      *
      * @param chatHistoryQueryRequest
      * @return
@@ -85,6 +94,14 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         return queryWrapper;
     }
 
+    /**
+     * 分页获取应用对话历史
+     * @param appId 应用id
+     * @param pageSize 每页大小
+     * @param lastCreateTime 最后创建时间
+     * @param loginUser 登录用户
+     * @return
+     */
     @Override
     public Page<ChatHistory> listAppChatHistoryByPage(Long appId, int pageSize,
                                                       LocalDateTime lastCreateTime,
@@ -112,6 +129,12 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     }
 
 
+    /**
+     * 根据应用id删除对话历史
+     *
+     * @param appId 应用id
+     * @return 是否删除成功
+     */
     @Override
     public boolean deleteByAppId(Long appId) {
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID不能为空");
@@ -121,6 +144,14 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     }
 
 
+    /**
+     * 添加对话消息历史
+     * @param appId
+     * @param message
+     * @param messageType
+     * @param userId
+     * @return
+     */
     @Override
     public boolean addChatMessage(Long appId, String message, String messageType, Long userId) {
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID不能为空");
@@ -138,5 +169,55 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
                 .build();
         return this.save(chatHistory);// 保存到数据库
     }
+
+
+    /**
+     * 加载对话历史到记忆
+     * @param appId 应用id
+     * @param chatMemory 对话记忆
+     * @param maxCount 最大数量
+     * @return 加载数量
+     */
+    @Override
+    public int loadChatHistoryToMemory(Long appId, MessageWindowChatMemory chatMemory, int maxCount) {
+        try {
+            // 直接构造查询条件，起始点为 1 而不是 0，用于排除最新的用户消息
+            QueryWrapper queryWrapper = QueryWrapper.create()
+                    .eq(ChatHistory::getAppId, appId)
+                    .orderBy(ChatHistory::getCreateTime, false)
+                    .limit(1, maxCount);
+            List<ChatHistory> historyList = this.list(queryWrapper);//执行数据库查询
+            if (CollUtil.isEmpty(historyList)) {
+                return 0;
+            }
+            // 反转列表，确保按时间正序（老的在前，新的在后）
+            //因为对话是有因果关系的：
+            //必须先有“用户问什么”，才有“AI回答什么”。
+            //记忆体里消息的顺序必须与实际发生的顺序一致，模型才能正确理解上下文。
+            //如果顺序是乱的（比如最新的在最前面），模型就可能把后来的回复当成前面问题的前提，产生理解错乱。
+            historyList = historyList.reversed();
+            // 按时间顺序添加到记忆中
+            int loadedCount = 0;
+            // 先清理历史缓存，防止重复加载
+            chatMemory.clear();
+            for (ChatHistory history : historyList) {
+                if (ChatHistoryMessageTypeEnum.USER.getValue().equals(history.getMessageType())) {
+                    chatMemory.add(UserMessage.from(history.getMessage()));
+                    loadedCount++;
+                } else if (ChatHistoryMessageTypeEnum.AI.getValue().equals(history.getMessageType())) {
+                    chatMemory.add(AiMessage.from(history.getMessage()));
+                    loadedCount++;
+                }
+            }
+            log.info("成功为 appId: {} 加载了 {} 条历史对话", appId, loadedCount);
+            return loadedCount;//记录成功加载的条数，方便追踪上下文窗口大小。
+        } catch (Exception e) {
+            log.error("加载历史对话失败，appId: {}, error: {}", appId, e.getMessage(), e);
+            // 加载失败不影响系统运行，只是没有历史上下文
+            return 0;
+        }
+    }
+
+
 }
 
