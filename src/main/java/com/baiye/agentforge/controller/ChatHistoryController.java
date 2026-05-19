@@ -25,7 +25,7 @@ import java.time.LocalDateTime;
  * @author <a href="https://github.com/baiyecode">白夜</a>
  */
 @RestController
-@RequestMapping("/chat_history")
+@RequestMapping("/chatHistory")
 public class ChatHistoryController {
 
     @Autowired

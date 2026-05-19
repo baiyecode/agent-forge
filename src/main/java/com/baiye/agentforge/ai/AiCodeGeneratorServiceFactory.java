@@ -104,27 +104,6 @@ public class AiCodeGeneratorServiceFactory {
     }
 
     /**
-     * 创建新的 AI 服务实例
-     */
-    private AiCodeGeneratorService createAiCodeGeneratorService(long appId) {
-        log.info("为 appId: {} 创建新的 AI 服务实例", appId);
-        // 根据 appId 构建独立的对话记忆
-        MessageWindowChatMemory chatMemory = MessageWindowChatMemory
-                .builder()
-                .id(appId)
-                .chatMemoryStore(redisChatMemoryStore)
-                .maxMessages(20)
-                .build();
-        // 从数据库加载历史对话到记忆中
-        chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 20);
-        return AiServices.builder(AiCodeGeneratorService.class)
-                .chatModel(chatModel)
-                .streamingChatModel(openAiStreamingChatModel)
-                .chatMemory(chatMemory)
-                .build();
-    }
-
-    /**
      * 默认提供一个 Bean
      */
     @Bean
@@ -136,12 +115,13 @@ public class AiCodeGeneratorServiceFactory {
      * 创建新的 AI 服务实例
      */
     private AiCodeGeneratorService createAiCodeGeneratorService(long appId, CodeGenTypeEnum codeGenType) {
+        log.info("为 appId: {} 创建新的 AI 服务实例", appId);
         // 根据 appId 构建独立的对话记忆
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory
                 .builder()
                 .id(appId)
                 .chatMemoryStore(redisChatMemoryStore)
-                .maxMessages(20)
+                .maxMessages(50)
                 .build();
         // 从数据库加载历史对话到记忆中
         chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 20);

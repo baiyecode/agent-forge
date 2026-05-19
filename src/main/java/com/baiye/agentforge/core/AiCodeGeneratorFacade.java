@@ -54,8 +54,8 @@ public class AiCodeGeneratorFacade {
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "生成类型为空");
         }
-        // 根据 appId 获取对应的 AI 服务实例
-        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
+        // 根据 appId 获取相应的 AI 服务实例
+        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId, codeGenTypeEnum);
         return switch (codeGenTypeEnum) {
             case HTML -> {
                 HtmlCodeResult result = aiCodeGeneratorService.generateHtmlCode(userMessage);
@@ -126,8 +126,8 @@ public class AiCodeGeneratorFacade {
                 yield processCodeStream(codeStream, CodeGenTypeEnum.MULTI_FILE, appId);
             }
             case VUE_PROJECT -> {
-                Flux<String> codeStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
-                yield processCodeStream(codeStream, CodeGenTypeEnum.MULTI_FILE, appId);
+                TokenStream tokenStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
+                yield processTokenStream(tokenStream);
             }
             default -> {
                 String errorMessage = "不支持的生成类型：" + codeGenTypeEnum.getValue();
@@ -155,6 +155,9 @@ public class AiCodeGeneratorFacade {
      * @param tokenStream TokenStream 对象
      * @return Flux<String> 流式响应
      */
+
+    //todo
+
     private Flux<String> processTokenStream(TokenStream tokenStream) {
         return Flux.create(sink -> {
                         //部分响应（Token 流文本）

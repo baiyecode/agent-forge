@@ -72,8 +72,8 @@ public class AppController {
         app.setUserId(loginUser.getId());
         // 应用名称暂时为 initPrompt 前 12 位
         app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
-        // 暂时设置为多文件生成
-        app.setCodeGenType(CodeGenTypeEnum.MULTI_FILE.getValue());
+        // 暂时设置为 VUE 工程生成
+        app.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
         // 插入数据库
         boolean result = appService.save(app);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
@@ -308,6 +308,7 @@ public class AppController {
     /**
      * 应用聊天生成代码（流式 SSE）
      * produces = MediaType.TEXT_EVENT_STREAM_VALUE：告诉客户端该端点返回的内容类型为 text/event-stream，即 SSE 格式。
+     *
      * @param appId   应用 ID
      * @param message 用户消息
      * @param request 请求对象
@@ -364,7 +365,6 @@ public class AppController {
         String deployUrl = appService.deployApp(appId, loginUser);
         return ResultUtils.success(deployUrl);
     }
-
 
 
 }
