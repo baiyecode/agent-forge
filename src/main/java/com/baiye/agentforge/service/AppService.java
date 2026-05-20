@@ -1,5 +1,6 @@
 package com.baiye.agentforge.service;
 
+import com.baiye.agentforge.model.dto.app.AppAddRequest;
 import com.baiye.agentforge.model.dto.app.AppQueryRequest;
 import com.baiye.agentforge.model.entity.User;
 import com.baiye.agentforge.model.vo.AppVO;
@@ -17,6 +18,15 @@ import java.util.List;
  */
 public interface AppService extends IService<App> {
 
+
+    /**
+     * 创建应用
+     *
+     * @param appAddRequest 应用创建请求
+     * @param loginUser     登录用户
+     * @return 应用id
+     */
+    Long createApp(AppAddRequest appAddRequest, User loginUser);
 
     /**
      * 获取应用视图对象

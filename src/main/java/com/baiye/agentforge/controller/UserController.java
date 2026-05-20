@@ -13,12 +13,12 @@ import com.baiye.agentforge.model.dto.user.*;
 import com.baiye.agentforge.model.vo.LoginUserVO;
 import com.baiye.agentforge.model.vo.UserVO;
 import com.mybatisflex.core.paginate.Page;
+import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.beans.factory.annotation.Autowired;
 import com.baiye.agentforge.model.entity.User;
 import com.baiye.agentforge.service.UserService;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,7 +33,7 @@ import java.util.List;
 @RequestMapping("/user")
 public class UserController {
 
-    @Autowired
+    @Resource
     private UserService userService;
 
     /**

@@ -13,8 +13,8 @@ import com.baiye.agentforge.service.ChatHistoryService;
 import com.baiye.agentforge.service.UserService;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
+import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -28,10 +28,10 @@ import java.time.LocalDateTime;
 @RequestMapping("/chatHistory")
 public class ChatHistoryController {
 
-    @Autowired
+    @Resource
     private ChatHistoryService chatHistoryService;
 
-    @Autowired
+    @Resource
     private UserService userService;
 
     // region 用户接口

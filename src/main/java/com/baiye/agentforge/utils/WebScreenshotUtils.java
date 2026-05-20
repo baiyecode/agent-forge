@@ -7,7 +7,6 @@ import cn.hutool.core.util.StrUtil;
 import com.baiye.agentforge.exception.BusinessException;
 import com.baiye.agentforge.exception.ErrorCode;
 import io.github.bonigarcia.wdm.WebDriverManager;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
@@ -69,6 +68,59 @@ public class WebScreenshotUtils {
             }
         }
     }
+
+
+    /**
+     * 生成网页截图
+     * 创建目录 → 访问页面 → 显式等待 → 截图 → 保存原始 → 压缩 → 删除原始 → 返回压缩路径。
+     *
+     * @param webUrl 网页URL
+     * @return 压缩后的截图文件路径，失败返回null
+     */
+    public static String saveWebPageScreenshot(String webUrl) {
+        if (StrUtil.isBlank(webUrl)) {
+            log.error("网页URL不能为空");
+            return null;
+        }
+        try {
+            // 创建临时目录,8 位 UUID 前缀（例如 a1b2c3d4），确保每次截图都有独立的子目录，避免多线程或多任务时的文件名冲突。
+            String rootPath = System.getProperty("user.dir") + File.separator + "tmp" + File.separator + "screenshots"
+                    + File.separator + UUID.randomUUID().toString().substring(0, 8);
+            FileUtil.mkdir(rootPath);//会递归创建多级目录，如果父目录 tmp/screenshots 不存在也会一并创建。
+            // 图片后缀
+            final String IMAGE_SUFFIX = ".png";
+            // 原始截图文件路径,随机数字进一步避免了同一目录内文件名冲突
+            String imageSavePath = rootPath + File.separator + RandomUtil.randomNumbers(5) + IMAGE_SUFFIX;
+            // 访问网页
+            WebDriver driver = getDriver();          // 获取本线程的 driver
+            driver.get(webUrl);
+            // 等待页面加载完成
+            waitForPageLoad(driver);
+            // 截图.截取当前视口内的完整页面（即浏览器窗口看到的部分，不是整个长页面，
+            // 除非后续有滚动拼接处理，但这里只截取当前视口 1600×900）。返回 PNG 格式的字节数组。
+            byte[] screenshotBytes = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
+            // 保存原始图片
+            saveImage(screenshotBytes, imageSavePath);
+            log.info("原始截图保存成功: {}", imageSavePath);
+            // 压缩图片
+            final String COMPRESSION_SUFFIX = "_compressed.jpg";
+            //5 位随机数 + _compressed.jpg。注意后缀由 .png 变成了 .jpg，
+            //因为 Hutool 的 ImgUtil.compress 会根据目标文件扩展名来编码，
+            //这里指定为 .jpg 就能实现有损压缩（质量系数 0.3），大幅减小文件体积。
+            String compressedImagePath = rootPath + File.separator + RandomUtil.randomNumbers(5) + COMPRESSION_SUFFIX;
+            compressImage(imageSavePath, compressedImagePath);
+            log.info("压缩图片保存成功: {}", compressedImagePath);
+            // 删除原始图片，只保留压缩图片,这样可以节省磁盘空间，因为 PNG 原图体积可能数倍于 JPG。
+            FileUtil.del(imageSavePath);
+            return compressedImagePath;//返回压缩文件的完整路径：调用者拿到这个路径就可以直接使用或上传到云存储等。
+        } catch (Exception e) {
+            log.error("网页截图失败: {}", webUrl, e);
+            // 如果出现严重异常，销毁当前 driver，下次重新创建
+            quitDriver();
+            return null;
+        }
+    }
+
 
     /**
      * 初始化 Chrome 浏览器驱动
@@ -175,56 +227,7 @@ public class WebScreenshotUtils {
     }
 
 
-    /**
-     * 生成网页截图
-     * 创建目录 → 访问页面 → 显式等待 → 截图 → 保存原始 → 压缩 → 删除原始 → 返回压缩路径。
-     *
-     * @param webUrl 网页URL
-     * @return 压缩后的截图文件路径，失败返回null
-     */
-    public static String saveWebPageScreenshot(String webUrl) {
-        if (StrUtil.isBlank(webUrl)) {
-            log.error("网页URL不能为空");
-            return null;
-        }
-        try {
-            // 创建临时目录,8 位 UUID 前缀（例如 a1b2c3d4），确保每次截图都有独立的子目录，避免多线程或多任务时的文件名冲突。
-            String rootPath = System.getProperty("user.dir") + File.separator + "tmp" + File.separator + "screenshots"
-                    + File.separator + UUID.randomUUID().toString().substring(0, 8);
-            FileUtil.mkdir(rootPath);//会递归创建多级目录，如果父目录 tmp/screenshots 不存在也会一并创建。
-            // 图片后缀
-            final String IMAGE_SUFFIX = ".png";
-            // 原始截图文件路径,随机数字进一步避免了同一目录内文件名冲突
-            String imageSavePath = rootPath + File.separator + RandomUtil.randomNumbers(5) + IMAGE_SUFFIX;
-            // 访问网页
-            WebDriver driver = getDriver();          // 获取本线程的 driver
-            driver.get(webUrl);
-            // 等待页面加载完成
-            waitForPageLoad(driver);
-            // 截图.截取当前视口内的完整页面（即浏览器窗口看到的部分，不是整个长页面，
-            // 除非后续有滚动拼接处理，但这里只截取当前视口 1600×900）。返回 PNG 格式的字节数组。
-            byte[] screenshotBytes = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
-            // 保存原始图片
-            saveImage(screenshotBytes, imageSavePath);
-            log.info("原始截图保存成功: {}", imageSavePath);
-            // 压缩图片
-            final String COMPRESSION_SUFFIX = "_compressed.jpg";
-            //5 位随机数 + _compressed.jpg。注意后缀由 .png 变成了 .jpg，
-            //因为 Hutool 的 ImgUtil.compress 会根据目标文件扩展名来编码，
-            //这里指定为 .jpg 就能实现有损压缩（质量系数 0.3），大幅减小文件体积。
-            String compressedImagePath = rootPath + File.separator + RandomUtil.randomNumbers(5) + COMPRESSION_SUFFIX;
-            compressImage(imageSavePath, compressedImagePath);
-            log.info("压缩图片保存成功: {}", compressedImagePath);
-            // 删除原始图片，只保留压缩图片,这样可以节省磁盘空间，因为 PNG 原图体积可能数倍于 JPG。
-            FileUtil.del(imageSavePath);
-            return compressedImagePath;//返回压缩文件的完整路径：调用者拿到这个路径就可以直接使用或上传到云存储等。
-        } catch (Exception e) {
-            log.error("网页截图失败: {}", webUrl, e);
-            // 如果出现严重异常，销毁当前 driver，下次重新创建
-            quitDriver();
-            return null;
-        }
-    }
+
 
 
 

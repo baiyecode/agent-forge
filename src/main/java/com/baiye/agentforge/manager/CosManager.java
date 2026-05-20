@@ -51,17 +51,20 @@ public class CosManager {
      * @return 文件的访问URL，失败返回null
      */
     public String uploadFile(String key, File file) {
-        // 上传文件
-        PutObjectResult result = putObject(key, file);
-        if (result != null) {
-            // 构建访问URL
-            String url = String.format("%s%s", cosClientConfig.getHost(), key);
-            log.info("文件上传COS成功: {} -> {}", file.getName(), url);
-            return url;
-        } else {
-            log.error("文件上传COS失败，返回结果为空");
+        try {
+            PutObjectResult result = putObject(key, file);
+            if (result != null) {
+                String url = String.format("%s%s", cosClientConfig.getHost(), key);
+                log.info("文件上传COS成功: {} -> {}", file.getName(), url);
+                return url;
+            }
+        } catch (Exception e) {
+            log.error("文件上传COS异常: key={}, file={}", key, file.getName(), e);
             return null;
         }
+        // 统一失败出口
+        log.error("文件上传COS失败，key={}", key);
+        return null;
     }
 }
 

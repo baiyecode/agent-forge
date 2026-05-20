@@ -95,8 +95,12 @@ public class ScreenshotServiceImpl implements ScreenshotService {
         File localFile = new File(localFilePath);
         if (localFile.exists()) {
             File parentDir = localFile.getParentFile();
-            FileUtil.del(parentDir);
-            log.info("本地截图文件已清理: {}", localFilePath);
+            boolean deleted = FileUtil.del(parentDir);
+            if (deleted) {
+                log.info("本地截图文件已清理: {}", localFilePath);
+            } else {
+                log.warn("本地截图目录删除失败: {}", parentDir.getAbsolutePath());
+            }
         }
     }
 }
