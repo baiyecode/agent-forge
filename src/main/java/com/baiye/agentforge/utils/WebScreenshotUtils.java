@@ -6,7 +6,7 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baiye.agentforge.exception.BusinessException;
 import com.baiye.agentforge.exception.ErrorCode;
-import io.github.bonigarcia.wdm.WebDriverManager;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
@@ -33,38 +33,26 @@ import java.time.Duration;
 public class WebScreenshotUtils {
 
 
+    private static volatile WebDriver webDriver = null;
+
+    // 使用相对路径指向 resources 目录下的 ChromeDriver
+    private static final String CHROME_DRIVER_PATH =
+            System.getProperty("user.dir") + "/src/main/resources/web_drivers/chromedriver.exe";
     private static final int DEFAULT_WIDTH = 1600;
     private static final int DEFAULT_HEIGHT = 900;
 
-    // 使用 ThreadLocal 为每个线程维护独立的 WebDriver
-    private static final ThreadLocal<WebDriver> driverThreadLocal = new ThreadLocal<>();
-
     /**
-     * 获取当前线程的 WebDriver（懒加载，自动创建）
+     * 退出时销毁
      */
-    private static WebDriver getDriver() {
-        WebDriver driver = driverThreadLocal.get();
-        if (driver == null) {
-            driver = initChromeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
-            driverThreadLocal.set(driver);
-            log.debug("为线程 {} 创建新的 WebDriver", Thread.currentThread().getName());
-        }
-        return driver;
-    }
-
-    /**
-     * 关闭并移除当前线程的 WebDriver
-     */
-    public static void quitDriver() {
-        WebDriver driver = driverThreadLocal.get();
-        if (driver != null) {
+    @PreDestroy
+    public static void destroy() {
+        if (webDriver != null) {
             try {
-                driver.quit();
+                webDriver.quit();
             } catch (Exception e) {
-                log.warn("关闭 WebDriver 失败", e);
+                log.warn("关闭 WebDriver 时出现异常", e);
             } finally {
-                driverThreadLocal.remove();
-                log.debug("已关闭并移除线程 {} 的 WebDriver", Thread.currentThread().getName());
+                webDriver = null;
             }
         }
     }
@@ -82,7 +70,10 @@ public class WebScreenshotUtils {
             log.error("网页URL不能为空");
             return null;
         }
+        WebDriver driver = null;
         try {
+            // 每次调用创建新的 WebDriver 实例
+            driver = getWebDriver();
             // 创建临时目录,8 位 UUID 前缀（例如 a1b2c3d4），确保每次截图都有独立的子目录，避免多线程或多任务时的文件名冲突。
             String rootPath = System.getProperty("user.dir") + File.separator + "tmp" + File.separator + "screenshots"
                     + File.separator + UUID.randomUUID().toString().substring(0, 8);
@@ -92,7 +83,6 @@ public class WebScreenshotUtils {
             // 原始截图文件路径,随机数字进一步避免了同一目录内文件名冲突
             String imageSavePath = rootPath + File.separator + RandomUtil.randomNumbers(5) + IMAGE_SUFFIX;
             // 访问网页
-            WebDriver driver = getDriver();          // 获取本线程的 driver
             driver.get(webUrl);
             // 等待页面加载完成
             waitForPageLoad(driver);
@@ -115,20 +105,36 @@ public class WebScreenshotUtils {
             return compressedImagePath;//返回压缩文件的完整路径：调用者拿到这个路径就可以直接使用或上传到云存储等。
         } catch (Exception e) {
             log.error("网页截图失败: {}", webUrl, e);
-            // 如果出现严重异常，销毁当前 driver，下次重新创建
-            quitDriver();
             return null;
+        } finally {
+            // 关闭当前 WebDriver 实例
+            if (driver != null) {
+                try {
+                    driver.quit();
+                } catch (Exception e) {
+                    log.warn("关闭 WebDriver 时出现异常", e);
+                }
+            }
         }
     }
 
 
     /**
-     * 初始化 Chrome 浏览器驱动
+     * 获取 WebDriver 实例
+     * @return WebDriver 实例
      */
-    private static WebDriver initChromeDriver(int width, int height) {
+    private static WebDriver getWebDriver() {
         try {
-            // 自动管理 ChromeDriver
-            WebDriverManager.chromedriver().setup();
+            // 检查 ChromeDriver 文件是否存在
+            File driverFile = new File(CHROME_DRIVER_PATH);
+            if (!driverFile.exists()) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR,
+                        "ChromeDriver 未找到，请确保文件存在于: " + CHROME_DRIVER_PATH);
+            }
+
+            // 设置本地 ChromeDriver 路径
+            System.setProperty("webdriver.chrome.driver", CHROME_DRIVER_PATH);
+
             // 配置 Chrome 选项
             ChromeOptions options = new ChromeOptions();
             // 无头模式
@@ -140,7 +146,7 @@ public class WebScreenshotUtils {
             // 禁用开发者shm使用
             options.addArguments("--disable-dev-shm-usage");
             // 设置窗口大小
-            options.addArguments(String.format("--window-size=%d,%d", width, height));
+            options.addArguments(String.format("--window-size=%d,%d", DEFAULT_WIDTH, DEFAULT_HEIGHT));
             // 禁用扩展
             options.addArguments("--disable-extensions");
             // 设置用户代理
@@ -154,12 +160,15 @@ public class WebScreenshotUtils {
             return driver;
         } catch (Exception e) {
             log.error("初始化 Chrome 浏览器失败", e);
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "初始化 Chrome 浏览器失败");
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "初始化 Chrome 浏览器失败: " + e.getMessage());
         }
     }
 
     /**
      * 保存图片到文件
+     *
+     * @param imageBytes 图片字节数组
+     * @param imagePath 图片保存路径
      */
     private static void saveImage(byte[] imageBytes, String imagePath) {
         try {
@@ -173,6 +182,9 @@ public class WebScreenshotUtils {
 
     /**
      * 压缩图片
+     *
+     * @param originalImagePath 原始图片路径
+     * @param compressedImagePath 压缩后图片路径
      */
     private static void compressImage(String originalImagePath, String compressedImagePath) {
         // 压缩图片质量（0.1 = 10% 质量）,数值越大质量越高、文件越大，数值越小质量越低、文件越小。
@@ -198,21 +210,23 @@ public class WebScreenshotUtils {
      * 但实际经验发现，有些页面在 get() 返回后仍有异步 XHR 请求或前端框架的渲染任务在执行，
      * 此时 readyState 可能已经是 complete，但 DOM 上的元素尚未更新完毕。下面通过额外 sleep 来缓解这个问题。
      * 如果缺少 waitForPageLoad，就可能截到“白屏”、“部分加载”或“骨架屏”状态的页面，导致截图不可用。
+     *
+     * @param webDriver WebDriver 实例
      */
-    private static void waitForPageLoad(WebDriver driver) {
+    private static void waitForPageLoad(WebDriver webDriver) {
         try {
             // 创建等待页面加载对象,每隔一段固定时间（默认 500 毫秒）轮询条件，直到条件为真或超时。
             //这里构造时指定了最长等待时间为 10 秒。如果超过 10 秒条件仍不满足，会抛出 TimeoutException。
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(10));
             //每次轮询时，Lambda 会：
-            //将传入的 webDriver 强制转换为 JavascriptExecutor（ChromeDriver 已经实现了该接口），
+            //将传入的 driver 强制转换为 JavascriptExecutor（ChromeDriver 已经实现了该接口），
             // 然后调用 executeScript("return document.readyState") 在当前页面上下文中执行 JavaScript 代码。
             //获取返回值，与字符串 "complete" 做比较。
             //只有当 document.readyState 变为 "complete" 时，until 方法才会返回，代码才会继续往下执行。
             //这种等待方式更加可靠，因为它直接读取浏览器的内部状态，不受网络波动或个别资源阻塞的影响
             // Selenium 的默认页面加载策略在某些条件下可能已经返回但页面中还有异步资源未完成，但 readyState 会反映最终加载完成。
-            wait.until(webDriver ->
-                    ((JavascriptExecutor) webDriver).executeScript("return document.readyState")
+            wait.until(driver ->
+                    ((JavascriptExecutor) driver).executeScript("return document.readyState")
                             .equals("complete")
             );
             // 额外等待一段时间，确保动态内容加载完成
@@ -225,12 +239,5 @@ public class WebScreenshotUtils {
             log.error("等待页面加载时出现异常，继续执行截图", e);
         }
     }
-
-
-
-
-
-
-
 }
 

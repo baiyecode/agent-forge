@@ -5,6 +5,8 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baiye.agentforge.ai.model.message.*;
+import com.baiye.agentforge.ai.tools.BaseTool;
+import com.baiye.agentforge.ai.tools.ToolManager;
 import com.baiye.agentforge.constant.AppConstant;
 import com.baiye.agentforge.core.builder.VueProjectBuilder;
 import com.baiye.agentforge.model.enums.ChatHistoryMessageTypeEnum;
@@ -34,6 +36,9 @@ public class JsonMessageStreamHandler {
 
     @Resource
     private VueProjectBuilder vueProjectBuilder;
+
+    @Resource
+    private ToolManager toolManager;
 
     /**
      * 处理 TokenStream（VUE_PROJECT）
@@ -93,11 +98,15 @@ public class JsonMessageStreamHandler {
             case TOOL_REQUEST -> {
                 ToolRequestMessage toolRequestMessage = JSONUtil.toBean(chunk, ToolRequestMessage.class);
                 String toolId = toolRequestMessage.getId();
+                String toolName = toolRequestMessage.getName();
                 // 检查是否是第一次看到这个工具 ID    .contains()包含
                 if (toolId != null && !seenToolIds.contains(toolId)) {
                     // 第一次调用这个工具，记录 ID 并完整返回工具信息
                     seenToolIds.add(toolId);
-                    return "\n\n[选择工具] 写入文件\n\n";
+                    // 根据工具名称获取工具实例
+                    BaseTool tool = toolManager.getTool(toolName);
+                    // 返回格式化的工具调用信息
+                    return tool.generateToolRequestResponse();
                 } else {
                     // 不是第一次调用这个工具，直接返回空
                     return "";//返回空字符串，经 filter 后丢弃，避免前端重复显示。
@@ -106,22 +115,13 @@ public class JsonMessageStreamHandler {
             //工具执行完成
             case TOOL_EXECUTED -> {
                 ToolExecutedMessage toolExecutedMessage = JSONUtil.toBean(chunk, ToolExecutedMessage.class);
+                String toolName = toolExecutedMessage.getName();
                 //getArguments() 返回的是一个 JSON 字符串，内容为工具方法被调用时传入的参数键值对（即 @Tool 方法的参数名和值）。
                 //JSONUtil.parseObj 将该字符串解析为 JSONObject，便于按字段名取值。
                 JSONObject jsonObject = JSONUtil.parseObj(toolExecutedMessage.getArguments());
-                //relativeFilePath：写入文件的相对路径
-                String relativeFilePath = jsonObject.getStr("relativeFilePath");
-                //suffix：文件后缀名
-                String suffix = FileUtil.getSuffix(relativeFilePath);
-                //content：AI 生成并写入文件的完整文本内容，将直接嵌入到展示消息中。
-                String content = jsonObject.getStr("content");
-                //格式化字符串
-                String result = String.format("""   
-                        [工具调用] 写入文件 %s
-                        ```%s
-                        %s
-                        ```
-                        """, relativeFilePath, suffix, content);
+                // 根据工具名称获取工具实例并生成相应的结果格式
+                BaseTool tool = toolManager.getTool(toolName);
+                String result = tool.generateToolExecutedResult(jsonObject);
                 // 输出前端和要持久化的内容
                 //在 result 前后各加两个换行符 \n\n，让它在整个对话流中与前后文本（如 AI 的思考或生成的文字）有视觉间隔，增强可读性。
                 String output = String.format("\n\n%s\n\n", result);

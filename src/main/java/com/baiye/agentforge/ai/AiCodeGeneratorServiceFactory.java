@@ -1,6 +1,6 @@
 package com.baiye.agentforge.ai;
 
-import com.baiye.agentforge.ai.tools.FileWriteTool;
+import com.baiye.agentforge.ai.tools.*;
 import com.baiye.agentforge.exception.BusinessException;
 import com.baiye.agentforge.exception.ErrorCode;
 import com.baiye.agentforge.model.enums.CodeGenTypeEnum;
@@ -47,6 +47,9 @@ public class AiCodeGeneratorServiceFactory {
 
     @Resource
     private RedisChatMemoryStore redisChatMemoryStore;
+
+    @Resource
+    private ToolManager toolManager;
 
 
     //private final Cache<Long, AiCodeGeneratorService> serviceCache = Caffeine.newBuilder()
@@ -131,7 +134,7 @@ public class AiCodeGeneratorServiceFactory {
             case VUE_PROJECT -> AiServices.builder(AiCodeGeneratorService.class)
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemoryProvider(memoryId -> chatMemory) //绑定对话记忆。
-                    .tools(new FileWriteTool())
+                    .tools(toolManager.getAllTools())
                     // 默认行为：当框架收到一个未知的工具名称时，通常会直接抛出异常（如 IllegalStateException 或自定义异常），
                     // 导致整个对话流程中断，用户可能会看到错误，且无法自动恢复。
                     // hallucinatedToolNameStrategy 定义一种“柔性处理”：

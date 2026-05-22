@@ -36,23 +36,18 @@ public class ScreenshotServiceImpl implements ScreenshotService {
     public String generateAndUploadScreenshot(String webUrl) {
         ThrowUtils.throwIf(StrUtil.isBlank(webUrl), ErrorCode.PARAMS_ERROR, "网页URL不能为空");
         log.info("开始生成网页截图，URL: {}", webUrl);
+        // 1. 生成本地截图
+        String localScreenshotPath = WebScreenshotUtils.saveWebPageScreenshot(webUrl);
+        ThrowUtils.throwIf(StrUtil.isBlank(localScreenshotPath), ErrorCode.OPERATION_ERROR, "本地截图生成失败");
         try {
-            // 1. 生成本地截图
-            String localScreenshotPath = WebScreenshotUtils.saveWebPageScreenshot(webUrl);
-            ThrowUtils.throwIf(StrUtil.isBlank(localScreenshotPath), ErrorCode.OPERATION_ERROR, "本地截图生成失败");
-            try {
-                // 2. 上传到对象存储
-                String cosUrl = uploadScreenshotToCos(localScreenshotPath);
-                ThrowUtils.throwIf(StrUtil.isBlank(cosUrl), ErrorCode.OPERATION_ERROR, "截图上传对象存储失败");
-                log.info("网页截图生成并上传成功: {} -> {}", webUrl, cosUrl);
-                return cosUrl;
-            } finally {
-                // 3. 清理本地文件
-                cleanupLocalFile(localScreenshotPath);
-            }
+            // 2. 上传到对象存储
+            String cosUrl = uploadScreenshotToCos(localScreenshotPath);
+            ThrowUtils.throwIf(StrUtil.isBlank(cosUrl), ErrorCode.OPERATION_ERROR, "截图上传对象存储失败");
+            log.info("网页截图生成并上传成功: {} -> {}", webUrl, cosUrl);
+            return cosUrl;
         } finally {
-            // 4. ★ 关键：清理当前线程的 WebDriver（无论成功失败）
-            WebScreenshotUtils.quitDriver();
+            // 3. 清理本地文件
+            cleanupLocalFile(localScreenshotPath);
         }
     }
 
@@ -95,13 +90,10 @@ public class ScreenshotServiceImpl implements ScreenshotService {
         File localFile = new File(localFilePath);
         if (localFile.exists()) {
             File parentDir = localFile.getParentFile();
-            boolean deleted = FileUtil.del(parentDir);
-            if (deleted) {
-                log.info("本地截图文件已清理: {}", localFilePath);
-            } else {
-                log.warn("本地截图目录删除失败: {}", parentDir.getAbsolutePath());
-            }
+            FileUtil.del(parentDir);
+            log.info("本地截图文件已清理: {}", localFilePath);
         }
     }
 }
+
 
