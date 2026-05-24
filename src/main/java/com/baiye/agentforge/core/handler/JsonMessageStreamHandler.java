@@ -9,7 +9,9 @@ import com.baiye.agentforge.ai.tools.BaseTool;
 import com.baiye.agentforge.ai.tools.ToolManager;
 import com.baiye.agentforge.constant.AppConstant;
 import com.baiye.agentforge.core.builder.VueProjectBuilder;
+import com.baiye.agentforge.model.entity.ChatHistoryOriginal;
 import com.baiye.agentforge.model.enums.ChatHistoryMessageTypeEnum;
+import com.baiye.agentforge.service.ChatHistoryOriginalService;
 import com.baiye.agentforge.service.ChatHistoryService;
 import com.baiye.agentforge.model.entity.User;
 import jakarta.annotation.Resource;
@@ -17,7 +19,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -52,18 +56,37 @@ public class JsonMessageStreamHandler {
      */
     public Flux<String> handle(Flux<String> originFlux,
                                ChatHistoryService chatHistoryService,
+                               ChatHistoryOriginalService chatHistoryOriginalService,
                                long appId, User loginUser) {
         // 收集数据用于生成后端记忆格式
         StringBuilder chatHistoryStringBuilder = new StringBuilder();
+        // 收集用于恢复对话记忆的数据
+        StringBuilder aiResponseStringBuilder = new StringBuilder();
+        // 每个 Flux 流可能包含多条工具调用和 AI_RESPONSE 响应信息，统一收集之后批量入库
+        List<ChatHistoryOriginal> originalChatHistoryList = new ArrayList<>();
         // 用于跟踪已经见过的工具ID，判断是否是第一次调用
         Set<String> seenToolIds = new HashSet<>();//只向前端展示一次工具调用提示。
         return originFlux
                 .map(chunk -> {
                     // 解析每个 JSON 消息块
-                    return handleJsonMessageChunk(chunk, chatHistoryStringBuilder, seenToolIds);
+                    return handleJsonMessageChunk(chunk, chatHistoryStringBuilder, aiResponseStringBuilder, originalChatHistoryList, seenToolIds);
                 })
                 .filter(StrUtil::isNotEmpty) // 过滤空字串
                 .doOnComplete(() -> {
+                    // 工具调用信息入库
+                    if (!originalChatHistoryList.isEmpty()) {
+                        // 完善 ChatHistoryOriginal 信息
+                        originalChatHistoryList.forEach(chatHistory -> {
+                            chatHistory.setAppId(appId);
+                            chatHistory.setUserId(loginUser.getId());
+                        });
+                        // 批量入库
+                        chatHistoryOriginalService.addOriginalChatMessageBatch(originalChatHistoryList);
+                    }
+                    // Ai response 入库(两种情况：1. 没有进行工具调用。2. 工具调用结束之后 AI 一般还会有一句返回)
+                    String aiResponseStr = aiResponseStringBuilder.toString();
+                    chatHistoryOriginalService.addOriginalChatMessage(appId, aiResponseStr, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
+
                     // 流式响应完成后，添加 AI 消息到对话历史
                     String aiResponse = chatHistoryStringBuilder.toString();
                     chatHistoryService.addChatMessage(appId, aiResponse, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
@@ -75,13 +98,18 @@ public class JsonMessageStreamHandler {
                     // 如果AI回复失败，也要记录错误消息
                     String errorMessage = "AI回复失败: " + error.getMessage();
                     chatHistoryService.addChatMessage(appId, errorMessage, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
+                    chatHistoryOriginalService.addOriginalChatMessage(appId, errorMessage, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
                 });
     }
 
     /**
      * 解析并收集 TokenStream 数据
      */
-    private String handleJsonMessageChunk(String chunk, StringBuilder chatHistoryStringBuilder, Set<String> seenToolIds) {
+    private String handleJsonMessageChunk(String chunk,
+                                          StringBuilder chatHistoryStringBuilder,
+                                          StringBuilder aiResponseStringBuilder,
+                                          List<ChatHistoryOriginal> originalChatHistoryList,
+                                          Set<String> seenToolIds) {
         // 解析 JSON,将 JSON 反序列化为 StreamMessage 基类（含 type 字段）,通过 type 判断具体子类并分别处理。
         StreamMessage streamMessage = JSONUtil.toBean(chunk, StreamMessage.class);
         StreamMessageTypeEnum typeEnum = StreamMessageTypeEnum.getEnumByValue(streamMessage.getType());
@@ -92,6 +120,8 @@ public class JsonMessageStreamHandler {
                 String data = aiMessage.getData();//累积全文本
                 // 直接拼接响应
                 chatHistoryStringBuilder.append(data);
+                // 对于 AI 响应内容，与展示数据处理逻辑相同
+                aiResponseStringBuilder.append(data);
                 return data;
             }
             //工具调用请求
@@ -114,6 +144,9 @@ public class JsonMessageStreamHandler {
             }
             //工具执行完成
             case TOOL_EXECUTED -> {
+                // 处理工具调用信息
+                processToolExecutionMessage(aiResponseStringBuilder, chunk, originalChatHistoryList);
+                // 格式化处理
                 ToolExecutedMessage toolExecutedMessage = JSONUtil.toBean(chunk, ToolExecutedMessage.class);
                 String toolName = toolExecutedMessage.getName();
                 //getArguments() 返回的是一个 JSON 字符串，内容为工具方法被调用时传入的参数键值对（即 @Tool 方法的参数名和值）。
@@ -134,5 +167,40 @@ public class JsonMessageStreamHandler {
             }
         }
     }
+
+    /**
+     * 解析处理工具调用相关信息
+     * 将一次工具调用拆分成两条历史记录（请求和结果）并暂存，同时重置 AI 文本响应的累计器。
+     * @param aiResponseStringBuilder 累计的 AI 纯文本响应（在工具调用之前，AI 可能已经输出了一段自然语言，比如“我需要查一下天气”）。
+     * @param chunk 当前收到的 SSE 数据块，包含工具执行结果的 JSON 字符串。
+     * @param originalChatHistoryList 待入库的对话历史列表，这个方法会向其中追加两条记录。
+     */
+    private void processToolExecutionMessage(StringBuilder aiResponseStringBuilder, String chunk, List<ChatHistoryOriginal> originalChatHistoryList) {
+        // 解析 chunk
+        ToolExecutedMessage toolExecutedMessage = JSONUtil.toBean(chunk, ToolExecutedMessage.class);
+        // 构造工具调用请求对象(工具调用结果的数据就是从调用请求里拿的，所以直接在这里处理调用请求信息)
+        String aiResponseStr = aiResponseStringBuilder.toString();
+        ToolRequestMessage toolRequestMessage = new ToolRequestMessage();
+        toolRequestMessage.setId(toolExecutedMessage.getId());
+        toolRequestMessage.setName(toolExecutedMessage.getName());
+        toolRequestMessage.setArguments(toolExecutedMessage.getArguments());
+        toolRequestMessage.setText(aiResponseStr);
+        // 转换成 JSON
+        String toolRequestJsonStr = JSONUtil.toJsonStr(toolRequestMessage);
+        // 构造 ChatHistory 存入列表
+        ChatHistoryOriginal toolRequestHistory = ChatHistoryOriginal.builder()
+                .message(toolRequestJsonStr)
+                .messageType(ChatHistoryMessageTypeEnum.TOOL_EXECUTION_REQUEST.getValue())
+                .build();
+        originalChatHistoryList.add(toolRequestHistory);
+        ChatHistoryOriginal toolResultHistory = ChatHistoryOriginal.builder()
+                .message(chunk)
+                .messageType(ChatHistoryMessageTypeEnum.TOOL_EXECUTION_RESULT.getValue())
+                .build();
+        originalChatHistoryList.add(toolResultHistory);
+        // AI 响应内容暂时结束，置空 aiResponseStringBuilder
+        aiResponseStringBuilder.setLength(0);
+    }
+
 }
 

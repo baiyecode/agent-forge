@@ -1,10 +1,10 @@
 package com.baiye.agentforge.ai.tools;
 
 
-import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import com.baiye.agentforge.constant.AppConstant;
+import com.baiye.agentforge.utils.DirectoryTreePrinterUtils;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolMemoryId;
@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -54,7 +53,7 @@ public class FileDirReadTool extends BaseTool {
         try {
             //relativeDirPath 可能为 null，此时视为空字符串（代表根目录）。
             Path path = Paths.get(relativeDirPath == null ? "" : relativeDirPath);
-            if (!path.isAbsolute()) {
+            if (!path.isAbsolute()) { // 如果路径不是绝对路径
                 String projectDirName = "vue_project_" + appId;
                 Path projectRoot = Paths.get(AppConstant.CODE_OUTPUT_ROOT_DIR, projectDirName);
                 path = projectRoot.resolve(relativeDirPath == null ? "" : relativeDirPath);
@@ -65,42 +64,48 @@ public class FileDirReadTool extends BaseTool {
             }
             StringBuilder structure = new StringBuilder();
             structure.append("项目目录结构:\n");
+            //传入目标目录路径和一个文件过滤器
+            String directoryTree = DirectoryTreePrinterUtils.directoryTree(targetDir.getPath(), file -> !shouldIgnore(file.getName()));
+            structure.append(directoryTree);
+            if (!directoryTree.endsWith("\n")) { //判断最后一个字符是不是换行。
+                structure.append("\n");
+            }
+
+            return structure.toString();
             // FileUtil.loopFiles 是 Hutool 的文件工具方法，递归遍历目标目录及其子目录。
             //第二个参数是一个 FileFilter（lambda 形式）：决定是否将当前遍历到的文件/目录加入结果列表。
             //如果 shouldIgnore 返回 true → !true = false → 过滤器返回 false → 该文件/目录被排除。
             //如果 shouldIgnore 返回 false → !false = true → 过滤器返回 true → 该文件/目录被保留。
             // 也就是说，只收集不需要忽略的文件。
-            List<File> allFiles = FileUtil.loopFiles(targetDir, file -> !shouldIgnore(file.getName()));
+            //List<File> allFiles = FileUtil.loopFiles(targetDir, file -> !shouldIgnore(file.getName()));
             // 按路径深度和名称排序显示,按文件相对于根目录的深度升序排列（浅层的在前），深度相同时按完整路径的字典序排序。
-            allFiles.stream()
-                    .sorted((f1, f2) -> {  //对流中的元素进行排序
-                        int depth1 = getRelativeDepth(targetDir, f1);
-                        int depth2 = getRelativeDepth(targetDir, f2);
-                        if (depth1 != depth2) { // 深度不同，按深度升序排列
-                            //Integer.compare(a, b) 返回：
-                            //负数 如果 a < b → depth1 小于 depth2 时，f1 排在 f2 前面。
-                            //0 如果相等。
-                            //正数 如果 a > b。
-                            //这意味着浅层文件排在前，深层文件排在后。
-                            return Integer.compare(depth1, depth2);
-                        }
-                        //当深度相同时，调用 File.getPath() 获取文件的完整路径字符串，然后使用 String.compareTo 进行字典序比较。
-                        //即字母顺序（A 在 B 前，小写 a 在大写 Z 后等）,这样可以保证同一目录下的文件按名称排序。
-                        return f1.getPath().compareTo(f2.getPath());
-                    })
-                    .forEach(file -> { //终止操作,遍历所有文件
-                        int depth = getRelativeDepth(targetDir, file);
-                        //" " 是两个空格字符的字符串。String.repeat(int count) 会将字符串重复指定次数。
-                        //depth = 0 → indent = ""（空字符串），无缩进。
-                        //depth = 1 → indent = " "，两个空格。
-                        //depth = 2 → indent = " "，四个空格。
-                        String indent = "  ".repeat(depth);
-                        //先追加缩进，再追加文件名（通过 file.getName() 获取，不包含路径部分）。
-                        //例如一个深度为 1 的文件 b.txt，拼接结果为:  b.txt（前面两个空格）。
-                        structure.append(indent).append(file.getName());
-                    });
-            return structure.toString();
-
+            //allFiles.stream()
+            //        .sorted((f1, f2) -> {  //对流中的元素进行排序
+            //            int depth1 = getRelativeDepth(targetDir, f1);
+            //            int depth2 = getRelativeDepth(targetDir, f2);
+            //            if (depth1 != depth2) { // 深度不同，按深度升序排列
+            //                //Integer.compare(a, b) 返回：
+            //                //负数 如果 a < b → depth1 小于 depth2 时，f1 排在 f2 前面。
+            //                //0 如果相等。
+            //                //正数 如果 a > b。
+            //                //这意味着浅层文件排在前，深层文件排在后。
+            //                return Integer.compare(depth1, depth2);
+            //            }
+            //            //当深度相同时，调用 File.getPath() 获取文件的完整路径字符串，然后使用 String.compareTo 进行字典序比较。
+            //            //即字母顺序（A 在 B 前，小写 a 在大写 Z 后等）,这样可以保证同一目录下的文件按名称排序。
+            //            return f1.getPath().compareTo(f2.getPath());
+            //        })
+            //        .forEach(file -> { //终止操作,遍历所有文件
+            //            int depth = getRelativeDepth(targetDir, file);
+            //            //" " 是两个空格字符的字符串。String.repeat(int count) 会将字符串重复指定次数。
+            //            //depth = 0 → indent = ""（空字符串），无缩进。
+            //            //depth = 1 → indent = " "，两个空格。
+            //            //depth = 2 → indent = " "，四个空格。
+            //            String indent = "  ".repeat(depth);
+            //            //先追加缩进，再追加文件名（通过 file.getName() 获取，不包含路径部分）。
+            //            //例如一个深度为 1 的文件 b.txt，拼接结果为:  b.txt（前面两个空格）。
+            //            structure.append(indent).append(file.getName());
+            //        });
         } catch (Exception e) {
             String errorMessage = "读取目录结构失败: " + relativeDirPath + ", 错误: " + e.getMessage();
             log.error(errorMessage, e);

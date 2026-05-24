@@ -20,14 +20,11 @@ import com.baiye.agentforge.model.enums.ChatHistoryMessageTypeEnum;
 import com.baiye.agentforge.model.enums.CodeGenTypeEnum;
 import com.baiye.agentforge.model.vo.AppVO;
 import com.baiye.agentforge.model.vo.UserVO;
-import com.baiye.agentforge.service.ChatHistoryService;
-import com.baiye.agentforge.service.ScreenshotService;
-import com.baiye.agentforge.service.UserService;
+import com.baiye.agentforge.service.*;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.baiye.agentforge.model.entity.App;
 import com.baiye.agentforge.mapper.AppMapper;
-import com.baiye.agentforge.service.AppService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -59,6 +56,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private ChatHistoryService chatHistoryService;
+
+    @Resource
+    private ChatHistoryOriginalService chatHistoryOriginalService;
 
     @Resource
     private StreamHandlerExecutor streamHandlerExecutor;
@@ -198,8 +198,14 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型");
         }
-        // 记录用户消息到对话历史
+        // 5. 记录用户消息到对话历史
         chatHistoryService.addChatMessage(
+                appId,
+                message,
+                ChatHistoryMessageTypeEnum.USER.getValue(),
+                loginUser.getId()
+        );
+        chatHistoryOriginalService.addOriginalChatMessage(
                 appId,
                 message,
                 ChatHistoryMessageTypeEnum.USER.getValue(),
@@ -208,7 +214,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 6. 调用 AI 生成代码(流式）
         Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
         // 7. 累积 AI 回复内容，流完成后保存 AI 消息，出错时保存错误消息
-        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum);
+        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, chatHistoryOriginalService,appId, loginUser, codeGenTypeEnum);
     }
 
 
@@ -318,6 +324,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 先删除关联的对话历史
         try {
             chatHistoryService.deleteByAppId(appId);
+            chatHistoryOriginalService.deleteByAppId(appId);
         } catch (Exception e) {
             // 记录日志但不阻止应用删除
             log.error("删除应用关联对话历史失败: {}", e.getMessage());

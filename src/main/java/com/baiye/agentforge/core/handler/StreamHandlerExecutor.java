@@ -1,6 +1,7 @@
 package com.baiye.agentforge.core.handler;
 
 import com.baiye.agentforge.model.enums.CodeGenTypeEnum;
+import com.baiye.agentforge.service.ChatHistoryOriginalService;
 import com.baiye.agentforge.service.ChatHistoryService;
 import com.baiye.agentforge.model.entity.User;
 import jakarta.annotation.Resource;
@@ -32,11 +33,13 @@ public class StreamHandlerExecutor {
     @Resource
     private JsonMessageStreamHandler jsonMessageStreamHandler;
 
+
     /**
      * 创建流处理器并处理聊天历史记录
      *
      * @param originFlux         原始流
      * @param chatHistoryService 聊天历史服务
+     * @param chatHistoryOriginalService 原始聊天历史服务
      * @param appId              应用ID
      * @param loginUser          登录用户
      * @param codeGenType        代码生成类型
@@ -44,10 +47,11 @@ public class StreamHandlerExecutor {
      */
     public Flux<String> doExecute(Flux<String> originFlux,
                                   ChatHistoryService chatHistoryService,
+                                  ChatHistoryOriginalService chatHistoryOriginalService,
                                   long appId, User loginUser, CodeGenTypeEnum codeGenType) {
         return switch (codeGenType) {
             case VUE_PROJECT -> // 使用注入的组件实例
-                    jsonMessageStreamHandler.handle(originFlux, chatHistoryService, appId, loginUser);
+                    jsonMessageStreamHandler.handle(originFlux, chatHistoryService, chatHistoryOriginalService, appId, loginUser);
             case HTML, MULTI_FILE -> // 简单文本处理器不需要依赖注入
                     new SimpleTextStreamHandler().handle(originFlux, chatHistoryService, appId, loginUser);
         };

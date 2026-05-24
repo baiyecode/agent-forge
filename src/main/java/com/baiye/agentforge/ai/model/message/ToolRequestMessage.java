@@ -23,7 +23,9 @@ public class ToolRequestMessage extends StreamMessage {
 
     private String name;
 
-    private String arguments; //工具方法被调用时传入的参数键值对（即 @Tool 方法的参数名和值）。
+    private String arguments;//工具方法被调用时传入的参数键值对（即 @Tool 方法的参数名和值）。
+
+    private String text;//用于存储工具调用的文本信息
 
     public ToolRequestMessage(ToolExecutionRequest toolExecutionRequest) {
         super(StreamMessageTypeEnum.TOOL_REQUEST.getValue());
