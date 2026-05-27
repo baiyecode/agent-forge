@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * ClassName: QualityResult
  * Package: com.baiye.agentforge.langgraph4j.model
- * Description:
+ * Description: 质检结果
  *
  * @Author 白夜
  * @Create 2026/5/26 16:25
