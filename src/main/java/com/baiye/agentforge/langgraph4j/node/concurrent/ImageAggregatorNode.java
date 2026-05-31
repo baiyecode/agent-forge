@@ -28,25 +28,26 @@ public class ImageAggregatorNode {
             WorkflowContext context = WorkflowContext.getContext(state);
             List<ImageResource> allImages = new ArrayList<>();
             log.info("开始聚合并发收集的图片");
-            // 从各个中间字段聚合图片
-            if (context.getContentImages() != null) {
-                allImages.addAll(context.getContentImages());
-            }
-            if (context.getIllustrations() != null) {
-                allImages.addAll(context.getIllustrations());
-            }
-            if (context.getDiagrams() != null) {
-                allImages.addAll(context.getDiagrams());
-            }
-            if (context.getLogos() != null) {
-                allImages.addAll(context.getLogos());
-            }
-            log.info("图片聚合完成，总共 {} 张图片", allImages.size());
-            // 更新最终的图片列表
+            // 从合并后的状态通道安全地读取
+            appendImages(state, "contentImages", allImages);
+            appendImages(state, "illustrations", allImages);
+            appendImages(state, "diagrams", allImages);
+            appendImages(state, "logos", allImages);
             context.setImageList(allImages);
             context.setCurrentStep("图片聚合");
             return WorkflowContext.saveContext(context);
         });
     }
-}
 
+    private static void appendImages(MessagesState<String> state, String key, List<ImageResource> target) {
+        Object obj = state.data().get(key);
+
+        if (obj instanceof List<?> images) {
+            for (Object image : images) {
+                if (image instanceof ImageResource imageResource) {
+                    target.add(imageResource);
+                }
+            }
+        }
+    }
+}

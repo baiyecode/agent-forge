@@ -11,6 +11,7 @@ import org.bsc.langgraph4j.prebuilt.MessagesState;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
 
@@ -46,10 +47,8 @@ public class ContentImageCollectorNode {
             } catch (Exception e) {
                 log.error("内容图片收集失败: {}", e.getMessage(), e);
             }
-            // 将收集到的图片存储到上下文的中间字段中
-            context.setContentImages(contentImages);
-            context.setCurrentStep("内容图片收集");
-            return WorkflowContext.saveContext(context);
+            // 只返回图片通道，不返回 workflowContext，避免并发覆盖
+            return Map.of("contentImages", contentImages);
         });
     }
 }

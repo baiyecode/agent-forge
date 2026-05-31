@@ -11,6 +11,7 @@ import org.bsc.langgraph4j.prebuilt.MessagesState;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
 
@@ -46,9 +47,7 @@ public class LogoCollectorNode {
             } catch (Exception e) {
                 log.error("Logo生成失败: {}", e.getMessage(), e);
             }
-            context.setLogos(logos);
-            context.setCurrentStep("Logo生成");
-            return WorkflowContext.saveContext(context);
+            return Map.of("logos", logos);
         });
     }
 }

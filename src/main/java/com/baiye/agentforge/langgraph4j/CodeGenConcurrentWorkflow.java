@@ -12,8 +12,10 @@ import com.baiye.agentforge.model.enums.CodeGenTypeEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.bsc.langgraph4j.*;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
-import org.bsc.langgraph4j.prebuilt.MessagesStateGraph;
+import org.bsc.langgraph4j.state.Channel;
+import org.bsc.langgraph4j.state.Channels;
 
+import java.util.*;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -39,7 +41,18 @@ public class CodeGenConcurrentWorkflow {
      */
     public CompiledGraph<MessagesState<String>> createWorkflow() {
         try {
-            return new MessagesStateGraph<String>()
+            // 构造 channels，声明四个图片通道使用 appender 合并
+            Map<String, Channel<?>> channels = Map.of(
+                    "contentImages", (Channel<?>) Channels.appender(ArrayList::new),
+                    "illustrations", (Channel<?>) Channels.appender(ArrayList::new),
+                    "diagrams",      (Channel<?>) Channels.appender(ArrayList::new),
+                    "logos",         (Channel<?>) Channels.appender(ArrayList::new)
+            );
+
+            return new StateGraph<MessagesState<String>>(
+                    channels,
+                    data -> new MessagesState<>(data)
+            )
                     // 添加节点
                     .addNode("image_plan", ImagePlanNode.create())
                     .addNode("prompt_enhancer", PromptEnhancerNode.create())
@@ -112,23 +125,27 @@ public class CodeGenConcurrentWorkflow {
                 .setWorkQueue(new LinkedBlockingQueue<>(100)) // 使用容量为 100 的有界阻塞队列。
                 .setThreadFactory(ThreadFactoryBuilder.create().setNamePrefix("Parallel-Image-Collect").build())
                 .build();
-        RunnableConfig runnableConfig = RunnableConfig.builder()
-                .addParallelNodeExecutor("image_plan", pool) //将刚才创建的线程池 绑定到名为 "image_plan" 的节点。
-                .build();
-        for (NodeOutput<MessagesState<String>> step : workflow.stream(
-                Map.of(WorkflowContext.WORKFLOW_CONTEXT_KEY, initialContext),
-                runnableConfig
-        )) {
-            log.info("--- 第 {} 步完成 ---", stepCounter);
-            WorkflowContext currentContext = WorkflowContext.getContext(step.state());
-            if (currentContext != null) {
-                finalContext = currentContext;
-                log.info("当前步骤上下文: {}", currentContext);
+        try {
+            RunnableConfig runnableConfig = RunnableConfig.builder()
+                    .addParallelNodeExecutor("image_plan", pool) //将刚才创建的线程池 绑定到名为 "image_plan" 的节点。
+                    .build();
+            for (NodeOutput<MessagesState<String>> step : workflow.stream(
+                    Map.of(WorkflowContext.WORKFLOW_CONTEXT_KEY, initialContext),
+                    runnableConfig
+            )) {
+                log.info("--- 第 {} 步完成 ---", stepCounter);
+                WorkflowContext currentContext = WorkflowContext.getContext(step.state());
+                if (currentContext != null) {
+                    finalContext = currentContext;
+                    log.info("当前步骤上下文: {}", currentContext);
+                }
+                stepCounter++;
             }
-            stepCounter++;
+            log.info("并发代码生成工作流执行完成！");
+            return finalContext;
+        } finally {
+            pool.shutdown();// 关闭线程池
         }
-        log.info("并发代码生成工作流执行完成！");
-        return finalContext;
     }
 
     /**

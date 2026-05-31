@@ -11,6 +11,7 @@ import org.bsc.langgraph4j.prebuilt.MessagesState;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
 
@@ -46,9 +47,7 @@ public class IllustrationCollectorNode {
             } catch (Exception e) {
                 log.error("插画图片收集失败: {}", e.getMessage(), e);
             }
-            context.setIllustrations(illustrations);
-            context.setCurrentStep("插画图片收集");
-            return WorkflowContext.saveContext(context);
+            return Map.of("illustrations", illustrations);
         });
     }
 }
