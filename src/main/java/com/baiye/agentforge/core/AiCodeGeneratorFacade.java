@@ -8,6 +8,8 @@ import com.baiye.agentforge.ai.model.MultiFileCodeResult;
 import com.baiye.agentforge.ai.model.message.AiResponseMessage;
 import com.baiye.agentforge.ai.model.message.ToolExecutedMessage;
 import com.baiye.agentforge.ai.model.message.ToolRequestMessage;
+import com.baiye.agentforge.constant.AppConstant;
+import com.baiye.agentforge.core.builder.VueProjectBuilder;
 import com.baiye.agentforge.exception.BusinessException;
 import com.baiye.agentforge.exception.ErrorCode;
 import com.baiye.agentforge.model.enums.CodeGenTypeEnum;
@@ -37,7 +39,7 @@ import java.io.File;
 public class AiCodeGeneratorFacade {
 
     @Resource
-    private AiCodeGeneratorService aiCodeGeneratorService;
+    private VueProjectBuilder vueProjectBuilder;
 
     @Resource
     private AiCodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
@@ -127,7 +129,7 @@ public class AiCodeGeneratorFacade {
             }
             case VUE_PROJECT -> {
                 TokenStream tokenStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
-                yield processTokenStream(tokenStream);
+                yield processTokenStream(tokenStream, appId);
             }
             default -> {
                 String errorMessage = "不支持的生成类型：" + codeGenTypeEnum.getValue();
@@ -148,19 +150,19 @@ public class AiCodeGeneratorFacade {
 
     /**
      * 将 TokenStream 转换为 Flux<String>，并传递工具调用信息
-     *
+     * <p>
      * 将 LLM 流式回调事件转化为响应式 Flux 流，并以统一 JSON 格式向外传递，
      * 使得基于 WebFlux 的应用可以原生地、高效地将 AI 生成内容实时推送至前端。
      *
      * @param tokenStream TokenStream 对象
+     * @param appId       应用 ID
      * @return Flux<String> 流式响应
      */
 
-    //TODO
 
-    private Flux<String> processTokenStream(TokenStream tokenStream) {
+    private Flux<String> processTokenStream(TokenStream tokenStream, Long appId) {
         return Flux.create(sink -> {
-                        //部分响应（Token 流文本）
+            //部分响应（Token 流文本）
             tokenStream.onPartialResponse((String partialResponse) -> { //每次回调拿到的不是“刚生的词”，而是从对话开始到现在已经生成的全部字符的集合。
                         AiResponseMessage aiResponseMessage = new AiResponseMessage(partialResponse);
                         //sink.next() 将 JSON 字符串推入 Flux，下游消费者（如 HTTP 客户端）将接收到一条 SSE 格式的数据。
@@ -178,6 +180,9 @@ public class AiCodeGeneratorFacade {
                     })
                     //整个对话完成
                     .onCompleteResponse((ChatResponse response) -> {
+                        // 执行 Vue 项目构建（同步执行，确保预览时项目已就绪）
+                        String projectPath = AppConstant.CODE_OUTPUT_ROOT_DIR + "/vue_project_" + appId;
+                        vueProjectBuilder.buildProject(projectPath);
                         sink.complete();
                     })
                     //流过程中发生错误
@@ -189,7 +194,6 @@ public class AiCodeGeneratorFacade {
                     .start();
         });
     }
-
 
 
 }

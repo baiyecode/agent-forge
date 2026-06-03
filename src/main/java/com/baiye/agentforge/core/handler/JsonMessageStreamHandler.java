@@ -39,9 +39,6 @@ public class JsonMessageStreamHandler {
 
 
     @Resource
-    private VueProjectBuilder vueProjectBuilder;
-
-    @Resource
     private ToolManager toolManager;
 
     /**
@@ -90,9 +87,6 @@ public class JsonMessageStreamHandler {
                     // 流式响应完成后，添加 AI 消息到对话历史
                     String aiResponse = chatHistoryStringBuilder.toString();
                     chatHistoryService.addChatMessage(appId, aiResponse, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
-                    // 异步构造 Vue 项目
-                    String projectPath = AppConstant.CODE_OUTPUT_ROOT_DIR + "/vue_project_" + appId;
-                    vueProjectBuilder.buildProjectAsync(projectPath);
                 })
                 .doOnError(error -> {
                     // 如果AI回复失败，也要记录错误消息
@@ -171,8 +165,9 @@ public class JsonMessageStreamHandler {
     /**
      * 解析处理工具调用相关信息
      * 将一次工具调用拆分成两条历史记录（请求和结果）并暂存，同时重置 AI 文本响应的累计器。
+     *
      * @param aiResponseStringBuilder 累计的 AI 纯文本响应（在工具调用之前，AI 可能已经输出了一段自然语言，比如“我需要查一下天气”）。
-     * @param chunk 当前收到的 SSE 数据块，包含工具执行结果的 JSON 字符串。
+     * @param chunk                   当前收到的 SSE 数据块，包含工具执行结果的 JSON 字符串。
      * @param originalChatHistoryList 待入库的对话历史列表，这个方法会向其中追加两条记录。
      */
     private void processToolExecutionMessage(StringBuilder aiResponseStringBuilder, String chunk, List<ChatHistoryOriginal> originalChatHistoryList) {
