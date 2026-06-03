@@ -3,7 +3,7 @@ package com.baiye.agentforge.langgraph4j.node;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
-import com.baiye.agentforge.ai.CodeQualityCheckService;
+import com.baiye.agentforge.langgraph4j.ai.CodeQualityCheckService;
 import com.baiye.agentforge.langgraph4j.model.QualityResult;
 import com.baiye.agentforge.langgraph4j.state.WorkflowContext;
 import com.baiye.agentforge.utils.SpringContextUtil;

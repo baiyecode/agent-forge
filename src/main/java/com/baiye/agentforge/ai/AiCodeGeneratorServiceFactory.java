@@ -6,6 +6,7 @@ import com.baiye.agentforge.exception.ErrorCode;
 import com.baiye.agentforge.model.enums.CodeGenTypeEnum;
 import com.baiye.agentforge.service.ChatHistoryOriginalService;
 import com.baiye.agentforge.service.ChatHistoryService;
+import com.baiye.agentforge.utils.SpringContextUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
@@ -34,14 +35,8 @@ import java.time.Duration;
 @Slf4j
 public class AiCodeGeneratorServiceFactory {
 
-    @Resource
+    @Resource(name = "openAiChatModel")
     private ChatModel chatModel;
-
-    @Resource
-    private StreamingChatModel openAiStreamingChatModel;
-
-    @Resource
-    private StreamingChatModel reasoningStreamingChatModel;
 
     @Resource
     private ChatHistoryService chatHistoryService;
@@ -131,13 +126,14 @@ public class AiCodeGeneratorServiceFactory {
                 .chatMemoryStore(redisChatMemoryStore)
                 .maxMessages(60) // 一次工具调用也算一次记忆，maxMessages得设置得大一点，不然模型会失忆一直循环调用工具
                 .build();
-;
         // 根据代码生成类型选择不同的模型配置
          switch (codeGenType) {
             // Vue 项目生成使用推理模型
             case VUE_PROJECT -> {
                 // 从数据库加载历史对话到缓存中，由于多了工具调用相关信息，加载的最大数量稍微多一些
                 chatHistoryOriginalService.loadOriginalChatHistoryToMemory(appId, chatMemory, 50);
+                // 使用多例模式的 StreamingChatModel 解决并发问题
+                StreamingChatModel reasoningStreamingChatModel = SpringContextUtil.getBean("reasoningStreamingChatModelPrototype", StreamingChatModel.class);
                 aiCodeGeneratorService = AiServices.builder(AiCodeGeneratorService.class)
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemoryProvider(memoryId -> chatMemory) //绑定对话记忆。
@@ -157,6 +153,8 @@ public class AiCodeGeneratorServiceFactory {
             case HTML, MULTI_FILE -> {
                 // 从数据库加载历史对话到缓存中
                 chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 20);
+                // 使用多例模式的 StreamingChatModel 解决并发问题
+                StreamingChatModel openAiStreamingChatModel = SpringContextUtil.getBean("streamingChatModelPrototype", StreamingChatModel.class);
                 aiCodeGeneratorService = AiServices.builder(AiCodeGeneratorService.class)
                     .chatModel(chatModel)
                     .streamingChatModel(openAiStreamingChatModel)
@@ -168,9 +166,6 @@ public class AiCodeGeneratorServiceFactory {
         };
         return aiCodeGeneratorService;
     }
-
-
 }
-
 
 

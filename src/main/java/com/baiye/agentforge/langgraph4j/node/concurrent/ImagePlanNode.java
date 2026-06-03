@@ -1,6 +1,6 @@
 package com.baiye.agentforge.langgraph4j.node.concurrent;
 
-import com.baiye.agentforge.ai.ImageCollectionPlanService;
+import com.baiye.agentforge.langgraph4j.ai.ImageCollectionPlanService;
 import com.baiye.agentforge.langgraph4j.model.ImageCollectionPlan;
 import com.baiye.agentforge.langgraph4j.state.WorkflowContext;
 import com.baiye.agentforge.utils.SpringContextUtil;

@@ -1,4 +1,4 @@
-package com.baiye.agentforge.ai;
+package com.baiye.agentforge.langgraph4j.ai;
 
 import com.baiye.agentforge.langgraph4j.tools.ImageSearchTool;
 import com.baiye.agentforge.langgraph4j.tools.LogoGeneratorTool;
@@ -24,7 +24,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class ImageCollectionServiceFactory {
 
-    @Resource
+    @Resource(name = "openAiChatModel")
     private ChatModel chatModel;
 
     @Resource

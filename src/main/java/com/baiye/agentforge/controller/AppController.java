@@ -25,6 +25,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
@@ -183,9 +184,37 @@ public class AppController {
     /**
      * 分页获取精选应用列表
      *
+     * value = "good_app_page",
+     * 使用此注解的方法结果会存入名为 good_app_page 的缓存区域，TTL 为 5 分钟，
+     * 其他序列化规则、不缓存 null 等配置也全部生效。
+     * key = "T(com.baiye.agentforge.utils.CacheKeyUtils).generateKey(#appQueryRequest)",
+     * 这是 SpEL（Spring Expression Language）表达式，用于动态生成缓存的 Key。
+     * T(全限定类名)：SpEL 的类引用语法，可以调用该类的静态方法。
+     * #appQueryRequest：对方法参数名的引用。假设原方法的参数列表中有一个参数叫 appQueryRequest，Spring 会在运行时把实际参数对象注入到 SpEL 上下文中。
+     * 相当于执行：
+     * String cacheKey = CacheKeyUtils.generateKey(appQueryRequest);
+     * 最终存入 Redis 的 Key 是 good_app_page:: + 该工具类返回的字符串,因为 Spring 默认会在缓存名后拼接 :: 作为前缀。
+     * condition = "#appQueryRequest.pageNum <= 10"
+     * 条件缓存：只有当 SpEL 表达式结果为 true 时，方法的返回结果才会被缓存；否则每次调用都会直接执行原方法，不读取也不更新缓存。
+     * 这里的意思是：只有请求的页码（pageNum）小于或等于 10 时，才会缓存结果。
+     *
+     * 整体执行流程 :
+     * 1、调用进入：当外部调用 getAppPage(request)，request.pageNum = 3，且其他条件对应某种组合。
+     * 2、条件判断：Spring 执行 condition 表达式，发现 3 <= 10 为 true，允许缓存。
+     * 3、Key 生成：执行 CacheKeyUtils.generateKey(request)，得到一个字符串。
+     * 4、查找缓存：去 Redis 查找 good_app_page::<生成的Key>。
+     *    命中：直接返回缓存中的 Page<App> 对象，原方法不执行。
+     *    未命中：执行原方法（查询数据库），将结果序列化为 JSON（按照配置的 GenericJackson2JsonRedisSerializer）存入 Redis，并设置 5 分钟过期。
+     * 5、如果 pageNum = 20，condition 结果为 false，跳过缓存，每次直接执行原方法。
+     *
      * @param appQueryRequest 查询请求
      * @return 精选应用列表
      */
+    @Cacheable(
+            value = "good_app_page",
+            key = "T(com.baiye.agentforge.utils.CacheKeyUtils).generateKey(#appQueryRequest)",
+            condition = "#appQueryRequest.pageNum <= 10"
+    )
     @PostMapping("/good/list/page/vo")
     public BaseResponse<Page<AppVO>> listGoodAppVOByPage(@RequestBody AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);

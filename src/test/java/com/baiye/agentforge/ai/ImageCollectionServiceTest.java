@@ -1,5 +1,6 @@
 package com.baiye.agentforge.ai;
 
+import com.baiye.agentforge.langgraph4j.ai.ImageCollectionService;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

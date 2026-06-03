@@ -1,4 +1,4 @@
-package com.baiye.agentforge.ai;
+package com.baiye.agentforge.langgraph4j.ai;
 
 import com.baiye.agentforge.langgraph4j.model.QualityResult;
 import dev.langchain4j.service.SystemMessage;

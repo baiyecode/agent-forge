@@ -9,18 +9,18 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 
 /**
- * ClassName: ReasoningStreamingChatModelConfig
+ * ClassName: StreamingChatModelConfig
  * Package: com.baiye.agentforge.config
- * Description: 推理专用流式模型配置
+ * Description: 通用流式聊天模型配置
  *
  * @Author 白夜
- * @Create 2026/5/17 12:31
+ * @Create 2026/6/2 15:17
  * @Version 1.0
  */
 @Configuration
-@ConfigurationProperties(prefix = "langchain4j.open-ai.reasoning-streaming-chat-model")
+@ConfigurationProperties(prefix = "langchain4j.open-ai.streaming-chat-model")
 @Data
-public class ReasoningStreamingChatModelConfig {
+public class StreamingChatModelConfig {
 
     private String baseUrl;
 
@@ -32,13 +32,15 @@ public class ReasoningStreamingChatModelConfig {
 
     private Double temperature;
 
-    private Boolean logRequests = false;
+    private boolean logRequests;
 
-    private Boolean logResponses = false;
+    private boolean logResponses;
 
     @Bean
+    //将 Bean 的作用域设置为 原型（prototype）。
+    //这意味着每次通过容器获取该 Bean（例如 @Autowired 或 applicationContext.getBean(...)）时，都会创建一个新的实例。
     @Scope("prototype")
-    public StreamingChatModel reasoningStreamingChatModelPrototype() {
+    public StreamingChatModel streamingChatModelPrototype() {
         return OpenAiStreamingChatModel.builder()
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)
@@ -50,5 +52,4 @@ public class ReasoningStreamingChatModelConfig {
                 .build();
     }
 }
-
 
