@@ -17,6 +17,8 @@ import com.baiye.agentforge.model.entity.App;
 import com.baiye.agentforge.model.entity.User;
 import com.baiye.agentforge.model.enums.CodeGenTypeEnum;
 import com.baiye.agentforge.model.vo.AppVO;
+import com.baiye.agentforge.ratelimit.annotation.RateLimit;
+import com.baiye.agentforge.ratelimit.enums.RateLimitType;
 import com.baiye.agentforge.service.AppService;
 import com.baiye.agentforge.service.ProjectDownloadService;
 import com.baiye.agentforge.service.UserService;
@@ -337,6 +339,8 @@ public class AppController {
      * @return 生成结果流
      */
     @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @RateLimit(limitType = RateLimitType.USER, rate = 5, rateInterval = 60,
+            message = "AI 对话请求过于频繁，请稍后再试")
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId,
                                                        @RequestParam String message,
                                                        HttpServletRequest request) {
