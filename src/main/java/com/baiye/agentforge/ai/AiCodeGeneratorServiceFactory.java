@@ -1,6 +1,7 @@
 package com.baiye.agentforge.ai;
 
 import com.baiye.agentforge.ai.guardrail.PromptSafetyInputGuardrail;
+import com.baiye.agentforge.ai.guardrail.RetryOutputGuardrail;
 import com.baiye.agentforge.ai.tools.*;
 import com.baiye.agentforge.exception.BusinessException;
 import com.baiye.agentforge.exception.ErrorCode;
@@ -150,6 +151,7 @@ public class AiCodeGeneratorServiceFactory {
                                         "Error: there is no tool called " + toolExecutionRequest.name())
                         )
                         .inputGuardrails(new PromptSafetyInputGuardrail())  // 添加输入护轨
+                        //.outputGuardrails(new RetryOutputGuardrail()) // 添加输出护轨，为了流式输出，这里不使用
                         .build();
             }
             // HTML 和多文件生成使用默认模型
@@ -163,6 +165,7 @@ public class AiCodeGeneratorServiceFactory {
                         .streamingChatModel(openAiStreamingChatModel)
                         .chatMemory(chatMemory)
                         .inputGuardrails(new PromptSafetyInputGuardrail())  // 添加输入护轨
+                        //.outputGuardrails(new RetryOutputGuardrail()) // 添加输出护轨，为了流式输出，这里不使用
                         .build();
             }
             default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR,
