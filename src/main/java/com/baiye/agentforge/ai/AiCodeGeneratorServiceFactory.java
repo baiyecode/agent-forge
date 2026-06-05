@@ -1,5 +1,6 @@
 package com.baiye.agentforge.ai;
 
+import com.baiye.agentforge.ai.guardrail.PromptSafetyInputGuardrail;
 import com.baiye.agentforge.ai.tools.*;
 import com.baiye.agentforge.exception.BusinessException;
 import com.baiye.agentforge.exception.ErrorCode;
@@ -127,7 +128,7 @@ public class AiCodeGeneratorServiceFactory {
                 .maxMessages(60) // 一次工具调用也算一次记忆，maxMessages得设置得大一点，不然模型会失忆一直循环调用工具
                 .build();
         // 根据代码生成类型选择不同的模型配置
-         switch (codeGenType) {
+        switch (codeGenType) {
             // Vue 项目生成使用推理模型
             case VUE_PROJECT -> {
                 // 从数据库加载历史对话到缓存中，由于多了工具调用相关信息，加载的最大数量稍微多一些
@@ -135,19 +136,21 @@ public class AiCodeGeneratorServiceFactory {
                 // 使用多例模式的 StreamingChatModel 解决并发问题
                 StreamingChatModel reasoningStreamingChatModel = SpringContextUtil.getBean("reasoningStreamingChatModelPrototype", StreamingChatModel.class);
                 aiCodeGeneratorService = AiServices.builder(AiCodeGeneratorService.class)
-                    .streamingChatModel(reasoningStreamingChatModel)
-                    .chatMemoryProvider(memoryId -> chatMemory) //绑定对话记忆。
-                    .tools(toolManager.getAllTools())
-                    // 默认行为：当框架收到一个未知的工具名称时，通常会直接抛出异常（如 IllegalStateException 或自定义异常），
-                    // 导致整个对话流程中断，用户可能会看到错误，且无法自动恢复。
-                    // hallucinatedToolNameStrategy 定义一种“柔性处理”：
-                    // 不中断流程，而是返回一条错误消息给模型，让它知道这个工具不存在，并有机会修正自己的行为。
-                    // 当框架检测到模型请求的工具名称未被注册时，会调用这个函数，将原始的 ToolExecutionRequest 传递进去。
-                    // 你需要返回一个 ToolExecutionResultMessage，作为“虚拟”的工具执行结果返回给模型，告诉模型发生了什么（通常是错误信息）。
-                    .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
-                            toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
-                    ))
-                    .build();
+                        .streamingChatModel(reasoningStreamingChatModel)
+                        .chatMemoryProvider(memoryId -> chatMemory) //绑定对话记忆。
+                        .tools(toolManager.getAllTools())
+                        // 默认行为：当框架收到一个未知的工具名称时，通常会直接抛出异常（如 IllegalStateException 或自定义异常），
+                        // 导致整个对话流程中断，用户可能会看到错误，且无法自动恢复。
+                        // hallucinatedToolNameStrategy 定义一种“柔性处理”：
+                        // 不中断流程，而是返回一条错误消息给模型，让它知道这个工具不存在，并有机会修正自己的行为。
+                        // 当框架检测到模型请求的工具名称未被注册时，会调用这个函数，将原始的 ToolExecutionRequest 传递进去。
+                        // 你需要返回一个 ToolExecutionResultMessage，作为“虚拟”的工具执行结果返回给模型，告诉模型发生了什么（通常是错误信息）。
+                        .hallucinatedToolNameStrategy(toolExecutionRequest ->
+                                ToolExecutionResultMessage.from(toolExecutionRequest,
+                                        "Error: there is no tool called " + toolExecutionRequest.name())
+                        )
+                        .inputGuardrails(new PromptSafetyInputGuardrail())  // 添加输入护轨
+                        .build();
             }
             // HTML 和多文件生成使用默认模型
             case HTML, MULTI_FILE -> {
@@ -156,14 +159,15 @@ public class AiCodeGeneratorServiceFactory {
                 // 使用多例模式的 StreamingChatModel 解决并发问题
                 StreamingChatModel openAiStreamingChatModel = SpringContextUtil.getBean("streamingChatModelPrototype", StreamingChatModel.class);
                 aiCodeGeneratorService = AiServices.builder(AiCodeGeneratorService.class)
-                    .chatModel(chatModel)
-                    .streamingChatModel(openAiStreamingChatModel)
-                    .chatMemory(chatMemory)
-                    .build();
+                        .chatModel(chatModel)
+                        .streamingChatModel(openAiStreamingChatModel)
+                        .chatMemory(chatMemory)
+                        .inputGuardrails(new PromptSafetyInputGuardrail())  // 添加输入护轨
+                        .build();
             }
             default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR,
                     "不支持的代码生成类型: " + codeGenType.getValue());
-        };
+        }
         return aiCodeGeneratorService;
     }
 }
