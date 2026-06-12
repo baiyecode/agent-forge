@@ -6,6 +6,7 @@ import com.qcloud.cos.COSClient;
 import com.qcloud.cos.auth.BasicCOSCredentials;
 import com.qcloud.cos.auth.COSCredentials;
 import lombok.Data;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,6 +25,10 @@ import com.qcloud.cos.ClientConfig;
  */
 @Configuration
 @ConfigurationProperties(prefix = "cos.client")
+@ConditionalOnProperty( // 当配置文件中存在cos.client时，才会加载该配置类
+        prefix = "cos.client",
+        name = {"host", "secretId", "secretKey", "region", "bucket"}
+)
 @Data
 public class CosClientConfig {
 
