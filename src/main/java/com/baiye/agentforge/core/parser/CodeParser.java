@@ -1,4 +1,4 @@
-package com.baiye.agentforge.parser;
+package com.baiye.agentforge.core.parser;
 
 /**
  * ClassName: CodeParser

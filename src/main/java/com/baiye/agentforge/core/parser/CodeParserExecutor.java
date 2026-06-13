@@ -1,4 +1,4 @@
-package com.baiye.agentforge.parser;
+package com.baiye.agentforge.core.parser;
 
 import com.baiye.agentforge.exception.BusinessException;
 import com.baiye.agentforge.exception.ErrorCode;
