@@ -42,7 +42,6 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     private AppService appService;
 
 
-
     /**
      * 获取对话历史查询条件
      *
@@ -95,10 +94,11 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
 
     /**
      * 分页获取应用对话历史
-     * @param appId 应用id
-     * @param pageSize 每页大小
+     *
+     * @param appId          应用id
+     * @param pageSize       每页大小
      * @param lastCreateTime 最后创建时间
-     * @param loginUser 登录用户
+     * @param loginUser      登录用户
      * @return
      */
     @Override
@@ -145,6 +145,7 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
 
     /**
      * 添加对话消息历史
+     *
      * @param appId
      * @param message
      * @param messageType
@@ -172,9 +173,10 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
 
     /**
      * 加载对话历史到记忆
-     * @param appId 应用id
+     *
+     * @param appId      应用id
      * @param chatMemory 对话记忆
-     * @param maxCount 最大数量
+     * @param maxCount   最大数量
      * @return 加载数量
      */
     @Override

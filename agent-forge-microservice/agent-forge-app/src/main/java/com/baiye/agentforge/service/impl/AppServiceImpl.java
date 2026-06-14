@@ -32,7 +32,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -54,8 +54,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
 
-    @Resource
-    @Lazy
+    @DubboReference
     private InnerUserService userService;
 
     @Resource
@@ -73,8 +72,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Resource
     private VueProjectBuilder vueProjectBuilder;
 
-    @Resource
-    @Lazy
+    @DubboReference
     private InnerScreenshotService screenshotService;
 
     @Resource
@@ -83,6 +81,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     /**
      * 创建应用
+     *
      * @param appAddRequest
      * @param loginUser
      * @return
@@ -223,7 +222,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 6. 调用 AI 生成代码(流式）
         Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
         // 7. 累积 AI 回复内容，流完成后保存 AI 消息，出错时保存错误消息
-        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, chatHistoryOriginalService,appId, loginUser, codeGenTypeEnum);
+        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, chatHistoryOriginalService, appId, loginUser, codeGenTypeEnum);
     }
 
 
@@ -310,8 +309,6 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             ThrowUtils.throwIf(!updated, ErrorCode.OPERATION_ERROR, "更新应用封面字段失败");
         });
     }
-
-
 
 
     /**

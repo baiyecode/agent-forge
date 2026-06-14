@@ -6,12 +6,10 @@ import com.baiye.agentforge.exception.ErrorCode;
 import com.baiye.agentforge.model.entity.User;
 import com.baiye.agentforge.model.enums.UserRoleEnum;
 import com.baiye.agentforge.innerservice.InnerUserService;
-import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -30,9 +28,6 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 @Component
 public class AuthInterceptor {
 
-    @Resource
-    @Lazy
-    private InnerUserService userService;
 
     /**
      * 执行拦截

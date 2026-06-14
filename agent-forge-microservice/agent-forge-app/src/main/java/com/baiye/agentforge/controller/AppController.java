@@ -205,13 +205,19 @@ public class AppController {
      *    未命中：执行原方法（查询数据库），将结果序列化为 JSON（按照配置的 GenericJackson2JsonRedisSerializer）存入 Redis，并设置 5 分钟过期。
      * 5、如果 pageNum = 20，condition 结果为 false，跳过缓存，每次直接执行原方法。
      *
+     * 需要注意的是，在微服务拆分后，SpringCache 的条件判断可能会失效，
+     * 这是一个常见的 Spring Cache + 微服务的问题。微服务拆分后，AOP 拦截器的执行顺序可能发生变化，
+     * Cache 拦截器可能比 RequestBody 解析更早执行，因此 SpEL 表达式无法正确解析请求参数。
+     * 要解决这个问题，可以注释掉 condition 或者使用 unless 替代 condition，
+     * 因为 unless 是在方法执行后判断(这时参数已解析完成)。
+     *
      * @param appQueryRequest 查询请求
      * @return 精选应用列表
      */
     @Cacheable(
             value = "good_app_page",
             key = "T(com.baiye.agentforge.utils.CacheKeyUtils).generateKey(#appQueryRequest)",
-            condition = "#appQueryRequest.pageNum <= 10"
+            unless = "#appQueryRequest.pageNum <= 10"
     )
     @PostMapping("/good/list/page/vo")
     public BaseResponse<Page<AppVO>> listGoodAppVOByPage(@RequestBody AppQueryRequest appQueryRequest) {
