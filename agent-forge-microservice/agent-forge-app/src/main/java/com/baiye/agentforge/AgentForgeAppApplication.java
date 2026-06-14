@@ -18,9 +18,9 @@ import org.springframework.cache.annotation.EnableCaching;
 @SpringBootApplication(exclude = {RedisEmbeddingStoreAutoConfiguration.class})
 @MapperScan("com.baiye.agentforge.mapper")
 @EnableCaching
-public class AgentForgeApplication {
+public class AgentForgeAppApplication {
     public static void main(String[] args) {
-        SpringApplication.run(AgentForgeApplication.class, args);
+        SpringApplication.run(AgentForgeAppApplication.class, args);
     }
 }
 
