@@ -72,7 +72,6 @@ public class AppController {
     }
 
 
-
     /**
      * 用户根据 id 修改自己的应用（目前只支持修改应用名称）
      *
@@ -181,7 +180,7 @@ public class AppController {
 
     /**
      * 分页获取精选应用列表
-     *
+     * <p>
      * value = "good_app_page",
      * 使用此注解的方法结果会存入名为 good_app_page 的缓存区域，TTL 为 5 分钟，
      * 其他序列化规则、不缓存 null 等配置也全部生效。
@@ -195,16 +194,16 @@ public class AppController {
      * condition = "#appQueryRequest.pageNum <= 10"
      * 条件缓存：只有当 SpEL 表达式结果为 true 时，方法的返回结果才会被缓存；否则每次调用都会直接执行原方法，不读取也不更新缓存。
      * 这里的意思是：只有请求的页码（pageNum）小于或等于 10 时，才会缓存结果。
-     *
+     * <p>
      * 整体执行流程 :
      * 1、调用进入：当外部调用 getAppPage(request)，request.pageNum = 3，且其他条件对应某种组合。
      * 2、条件判断：Spring 执行 condition 表达式，发现 3 <= 10 为 true，允许缓存。
      * 3、Key 生成：执行 CacheKeyUtils.generateKey(request)，得到一个字符串。
      * 4、查找缓存：去 Redis 查找 good_app_page::<生成的Key>。
-     *    命中：直接返回缓存中的 Page<App> 对象，原方法不执行。
-     *    未命中：执行原方法（查询数据库），将结果序列化为 JSON（按照配置的 GenericJackson2JsonRedisSerializer）存入 Redis，并设置 5 分钟过期。
+     * 命中：直接返回缓存中的 Page<App> 对象，原方法不执行。
+     * 未命中：执行原方法（查询数据库），将结果序列化为 JSON（按照配置的 GenericJackson2JsonRedisSerializer）存入 Redis，并设置 5 分钟过期。
      * 5、如果 pageNum = 20，condition 结果为 false，跳过缓存，每次直接执行原方法。
-     *
+     * <p>
      * 需要注意的是，在微服务拆分后，SpringCache 的条件判断可能会失效，
      * 这是一个常见的 Spring Cache + 微服务的问题。微服务拆分后，AOP 拦截器的执行顺序可能发生变化，
      * Cache 拦截器可能比 RequestBody 解析更早执行，因此 SpEL 表达式无法正确解析请求参数。
@@ -395,8 +394,6 @@ public class AppController {
     }
 
 
-
-
     /**
      * 下载应用代码
      *
@@ -431,7 +428,6 @@ public class AppController {
         // 7. 调用通用下载服务
         projectDownloadService.downloadProjectAsZip(sourceDirPath, downloadFileName, response);
     }
-
 
 
 }
