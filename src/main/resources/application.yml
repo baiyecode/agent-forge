@@ -52,22 +52,39 @@ knife4j:
 #    bucket: your-bucket-name
 
 
-## AI 模型配置
+# AI
 #langchain4j:
 #  open-ai:
+#    chat-model:
+#      base-url: https://api.deepseek.com
+#      api-key: your API key
+#      model-name: deepseek-chat
+#      log-requests: true # 是否记录请求日志
+#      log-responses: true # 是否记录响应日志
+#      max-retries: 3
+#    streaming-chat-model:
+#      base-url: https://api.deepseek.com
+#      api-key: your API key
+#      model-name: deepseek-v4-flash
+#      log-requests: true
+#      log-responses: true
+#      timeout: 300s # 超时时间
+#    #      strict-json-schema: true
+#    #      response-format: json_object   # json 格式输出
 #    # 推理 AI 模型配置（用于复杂的推理任务）
 #    reasoning-streaming-chat-model:
 #      base-url: https://api.deepseek.com
-#      api-key: <Your API Key>
-#      model-name: deepseek-reasoner
+#      api-key: your API key
+#      model-name: deepseek-v4-flash
 #      max-tokens: 32768
 #      temperature: 0.1
+#      timeout: 300s
 #      log-requests: true
 #      log-responses: true
 #    # 智能路由 AI 模型配置（用于简单的分类任务）
 #    routing-chat-model:
 #      base-url: https://api.deepseek.com
-#      api-key: <Your API Key>
+#      api-key: your API key
 #      model-name: deepseek-chat
 #      log-requests: true
 #      log-responses: true
