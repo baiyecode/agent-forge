@@ -15,6 +15,9 @@ Agent Forge是一个Spring Boot后端，用于生成、管理、预览、部署�
 - 可选Pexels和DashScope集成，用于图像搜索和图像生成。
 - 在根级一体化应用程序旁边，使用Dubbo + Nacos进行并行微服务布局。
 
+## 系统架构图
+![Agent Forge System Architecture](img/agent-forge-architecture.svg)
+
 ## Table of Contents
 
 - [Tech Stack](#tech-stack)

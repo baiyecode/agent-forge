@@ -1,0 +1,246 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="980" viewBox="0 0 1400 980" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Forge System Architecture</title>
+  <desc id="desc">Architecture diagram for Agent Forge showing API clients, Spring Boot application layers, AI workflow, persistence, storage, and optional microservice modules.</desc>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e2e8f0" stroke-width="0.5"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#34d399"/>
+    </marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#fb923c"/>
+    </marker>
+    <marker id="arrowRose" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#fb7185"/>
+    </marker>
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#38bdf8" flood-opacity="0.22"/>
+    </filter>
+    <style>
+      .bg { fill: #ffffff; }
+      .grid { fill: url(#grid); }
+      .title { fill: #0f172a; font: 700 26px "JetBrains Mono", "Consolas", monospace; }
+      .subtitle { fill: #475569; font: 13px "JetBrains Mono", "Consolas", monospace; }
+      .section-label { fill: #334155; font: 700 13px "JetBrains Mono", "Consolas", monospace; letter-spacing: 0; }
+      .name { fill: #0f172a; font: 700 14px "JetBrains Mono", "Consolas", monospace; }
+      .sub { fill: #334155; font: 10px "JetBrains Mono", "Consolas", monospace; }
+      .tiny { fill: #64748b; font: 9px "JetBrains Mono", "Consolas", monospace; }
+      .arrow { fill: none; stroke: #38bdf8; stroke-width: 1.7; marker-end: url(#arrow); }
+      .arrow-green { fill: none; stroke: #34d399; stroke-width: 1.7; marker-end: url(#arrowGreen); }
+      .arrow-orange { fill: none; stroke: #fb923c; stroke-width: 1.7; marker-end: url(#arrowOrange); }
+      .arrow-rose { fill: none; stroke: #fb7185; stroke-width: 1.6; stroke-dasharray: 6 5; marker-end: url(#arrowRose); }
+      .boundary { fill: rgba(248, 250, 252, 0.72); stroke: #f59e0b; stroke-width: 1.4; stroke-dasharray: 8 5; rx: 14; }
+      .security-boundary { fill: rgba(255, 241, 242, 0.72); stroke: #fb7185; stroke-width: 1.2; stroke-dasharray: 5 5; rx: 12; }
+      .legend-text { fill: #334155; font: 10px "JetBrains Mono", "Consolas", monospace; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1400" height="980"/>
+  <rect class="grid" x="0" y="0" width="1400" height="980"/>
+
+  <text class="title" x="48" y="58">Agent Forge System Architecture</text>
+  <text class="subtitle" x="48" y="82">Spring Boot + LangChain4j + LangGraph4j application generator with optional Dubbo/Nacos microservice deployment</text>
+  <circle cx="28" cy="50" r="7" fill="#34d399" filter="url(#softGlow)"/>
+
+  <!-- Boundaries -->
+  <rect class="boundary" x="260" y="115" width="620" height="655"/>
+  <text class="section-label" x="286" y="142">Root runtime: agent-forge backend :8123 /api</text>
+  <rect class="boundary" x="925" y="115" width="405" height="655"/>
+  <text class="section-label" x="951" y="142">Optional microservice runtime</text>
+  <rect class="security-boundary" x="285" y="165" width="570" height="118"/>
+  <text class="tiny" x="305" y="186">AuthCheck interceptor, session cookies, Redisson rate limit</text>
+
+  <!-- Connections behind boxes -->
+  <path class="arrow" d="M 185 242 C 225 242, 235 224, 275 224"/>
+  <path class="arrow" d="M 430 224 C 476 224, 486 224, 532 224"/>
+  <path class="arrow-green" d="M 693 224 C 737 224, 750 224, 793 224"/>
+  <path class="arrow-green" d="M 572 302 L 572 344"/>
+  <path class="arrow-green" d="M 572 405 L 572 448"/>
+  <path class="arrow-orange" d="M 572 508 L 572 552"/>
+  <path class="arrow-orange" d="M 572 610 L 572 654"/>
+  <path class="arrow-green" d="M 792 508 C 830 508, 848 508, 887 508 C 912 508, 917 475, 942 475"/>
+  <path class="arrow" d="M 700 684 C 760 684, 785 678, 820 640 C 850 606, 860 572, 860 546"/>
+  <path class="arrow" d="M 486 684 C 420 684, 382 660, 382 610 C 382 558, 432 532, 482 532"/>
+  <path class="arrow-rose" d="M 625 224 C 675 170, 760 164, 942 188"/>
+  <path class="arrow-green" d="M 572 770 L 572 842"/>
+  <path class="arrow" d="M 430 684 C 340 724, 226 820, 170 842"/>
+  <path class="arrow" d="M 714 684 C 808 732, 930 824, 1000 842"/>
+  <path class="arrow-green" d="M 777 684 C 860 718, 1000 728, 1100 690"/>
+
+  <!-- External client -->
+  <g>
+    <rect x="45" y="190" width="140" height="104" rx="6" fill="#ffffff"/>
+    <rect x="45" y="190" width="140" height="104" rx="6" fill="rgba(148, 163, 184, 0.16)" stroke="#64748b" stroke-width="1.5"/>
+    <text class="name" x="74" y="225">Clients</text>
+    <text class="sub" x="66" y="248">Web UI / Admin</text>
+    <text class="sub" x="67" y="266">REST + SSE</text>
+  </g>
+
+  <!-- API / security layer -->
+  <g>
+    <rect x="285" y="194" width="145" height="60" rx="6" fill="#ffffff"/>
+    <rect x="285" y="194" width="145" height="60" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+    <text class="name" x="314" y="219">Controllers</text>
+    <text class="sub" x="304" y="238">App / User / Chat</text>
+  </g>
+  <g>
+    <rect x="532" y="194" width="161" height="60" rx="6" fill="#ffffff"/>
+    <rect x="532" y="194" width="161" height="60" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+    <text class="name" x="561" y="219">Access Layer</text>
+    <text class="sub" x="552" y="238">Session / Auth / Rate</text>
+  </g>
+  <g>
+    <rect x="793" y="194" width="145" height="60" rx="6" fill="#ffffff"/>
+    <rect x="793" y="194" width="145" height="60" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+    <text class="name" x="826" y="219">Services</text>
+    <text class="sub" x="814" y="238">App/User/Download</text>
+  </g>
+
+  <!-- Core workflow stack -->
+  <g>
+    <rect x="452" y="344" width="240" height="61" rx="6" fill="#ffffff"/>
+    <rect x="452" y="344" width="240" height="61" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+    <text class="name" x="502" y="370">SSE Stream</text>
+    <text class="sub" x="485" y="389">Flux / SseEmitter progress</text>
+  </g>
+  <g>
+    <rect x="452" y="448" width="240" height="60" rx="6" fill="#ffffff"/>
+    <rect x="452" y="448" width="240" height="60" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+    <text class="name" x="500" y="473">AppService</text>
+    <text class="sub" x="487" y="492">create, chat, deploy, ZIP</text>
+  </g>
+  <g>
+    <rect x="452" y="552" width="240" height="58" rx="6" fill="#ffffff"/>
+    <rect x="452" y="552" width="240" height="58" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+    <text class="name" x="494" y="577">CodeGenWorkflow</text>
+    <text class="sub" x="481" y="595">LangGraph4j node graph</text>
+  </g>
+  <g>
+    <rect x="420" y="654" width="304" height="96" rx="6" fill="#ffffff"/>
+    <rect x="420" y="654" width="304" height="96" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+    <text class="name" x="466" y="681">Generation Pipeline</text>
+    <text class="sub" x="443" y="704">image_collector - prompt_enhancer - router</text>
+    <text class="sub" x="443" y="722">code_generator - quality_check - builder</text>
+    <text class="sub" x="443" y="740">HTML / multi-file / Vue project outputs</text>
+  </g>
+
+  <!-- AI and tools -->
+  <g>
+    <rect x="739" y="448" width="145" height="120" rx="6" fill="#ffffff"/>
+    <rect x="739" y="448" width="145" height="120" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+    <text class="name" x="776" y="476">AI Layer</text>
+    <text class="sub" x="758" y="499">LangChain4j services</text>
+    <text class="sub" x="758" y="518">OpenAI-compatible</text>
+    <text class="sub" x="758" y="537">DashScope images</text>
+  </g>
+  <g>
+    <rect x="744" y="606" width="138" height="82" rx="6" fill="#ffffff"/>
+    <rect x="744" y="606" width="138" height="82" rx="6" fill="rgba(148, 163, 184, 0.16)" stroke="#64748b" stroke-width="1.5"/>
+    <text class="name" x="777" y="634">Tools</text>
+    <text class="sub" x="761" y="655">file read/write</text>
+    <text class="sub" x="761" y="673">image search assets</text>
+  </g>
+  <g>
+    <rect x="284" y="544" width="126" height="82" rx="6" fill="#ffffff"/>
+    <rect x="284" y="544" width="126" height="82" rx="6" fill="rgba(148, 163, 184, 0.16)" stroke="#64748b" stroke-width="1.5"/>
+    <text class="name" x="314" y="572">Core IO</text>
+    <text class="sub" x="300" y="594">parser / saver</text>
+    <text class="sub" x="300" y="611">Vue builder</text>
+  </g>
+
+  <!-- Microservices -->
+  <g>
+    <rect x="960" y="170" width="150" height="76" rx="6" fill="#ffffff"/>
+    <rect x="960" y="170" width="150" height="76" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+    <text class="name" x="993" y="198">App API</text>
+    <text class="sub" x="982" y="219">agent-forge-app</text>
+    <text class="tiny" x="995" y="235">HTTP 8123</text>
+  </g>
+  <g>
+    <rect x="1150" y="170" width="150" height="76" rx="6" fill="#ffffff"/>
+    <rect x="1150" y="170" width="150" height="76" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+    <text class="name" x="1184" y="198">User API</text>
+    <text class="sub" x="1170" y="219">agent-forge-user</text>
+    <text class="tiny" x="1191" y="235">HTTP 8124</text>
+  </g>
+  <g>
+    <rect x="960" y="304" width="150" height="76" rx="6" fill="#ffffff"/>
+    <rect x="960" y="304" width="150" height="76" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+    <text class="name" x="1005" y="332">AI</text>
+    <text class="sub" x="982" y="353">agent-forge-ai</text>
+    <text class="tiny" x="984" y="369">model + prompts</text>
+  </g>
+  <g>
+    <rect x="1150" y="304" width="150" height="76" rx="6" fill="#ffffff"/>
+    <rect x="1150" y="304" width="150" height="76" rx="6" fill="rgba(148, 163, 184, 0.16)" stroke="#64748b" stroke-width="1.5"/>
+    <text class="name" x="1175" y="332">Screenshot</text>
+    <text class="sub" x="1162" y="353">Selenium service</text>
+    <text class="tiny" x="1191" y="369">HTTP 8127</text>
+  </g>
+  <g>
+    <rect x="970" y="432" width="322" height="86" rx="6" fill="#ffffff"/>
+    <rect x="970" y="432" width="322" height="86" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+    <text class="name" x="1070" y="461">Dubbo + Nacos</text>
+    <text class="sub" x="1000" y="484">agent-forge-client interfaces, triple protocol</text>
+    <text class="tiny" x="1012" y="502">50051 user / 50052 screenshot / 50053 app</text>
+  </g>
+  <g>
+    <rect x="970" y="562" width="322" height="92" rx="6" fill="#ffffff"/>
+    <rect x="970" y="562" width="322" height="92" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+    <text class="name" x="1030" y="591">Shared Modules</text>
+    <text class="sub" x="998" y="615">agent-forge-common: config, errors, utils</text>
+    <text class="sub" x="998" y="635">agent-forge-model: entities, DTOs, VOs</text>
+  </g>
+
+  <!-- Infrastructure / storage -->
+  <g>
+    <rect x="55" y="842" width="180" height="72" rx="6" fill="#ffffff"/>
+    <rect x="55" y="842" width="180" height="72" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+    <text class="name" x="105" y="871">MySQL</text>
+    <text class="sub" x="82" y="892">user / app / history</text>
+  </g>
+  <g>
+    <rect x="310" y="842" width="180" height="72" rx="6" fill="#ffffff"/>
+    <rect x="310" y="842" width="180" height="72" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+    <text class="name" x="365" y="871">Redis</text>
+    <text class="sub" x="339" y="892">session / cache / limit</text>
+  </g>
+  <g>
+    <rect x="565" y="842" width="210" height="72" rx="6" fill="#ffffff"/>
+    <rect x="565" y="842" width="210" height="72" rx="6" fill="rgba(148, 163, 184, 0.16)" stroke="#64748b" stroke-width="1.5"/>
+    <text class="name" x="606" y="871">Local Workspace</text>
+    <text class="sub" x="591" y="892">tmp/code_output, deploy, ZIP</text>
+  </g>
+  <g>
+    <rect x="850" y="842" width="200" height="72" rx="6" fill="#ffffff"/>
+    <rect x="850" y="842" width="200" height="72" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+    <text class="name" x="908" y="871">Tencent COS</text>
+    <text class="sub" x="890" y="892">optional object storage</text>
+  </g>
+  <g>
+    <rect x="1110" y="842" width="220" height="72" rx="6" fill="#ffffff"/>
+    <rect x="1110" y="842" width="220" height="72" rx="6" fill="rgba(148, 163, 184, 0.16)" stroke="#64748b" stroke-width="1.5"/>
+    <text class="name" x="1162" y="871">External APIs</text>
+    <text class="sub" x="1142" y="892">OpenAI-compatible, Pexels</text>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(48 930)">
+    <text class="legend-text" x="0" y="0">Legend</text>
+    <rect x="66" y="-13" width="18" height="10" rx="2" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee"/>
+    <text class="legend-text" x="90" y="-4">API</text>
+    <rect x="135" y="-13" width="18" height="10" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399"/>
+    <text class="legend-text" x="159" y="-4">Backend</text>
+    <rect x="238" y="-13" width="18" height="10" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa"/>
+    <text class="legend-text" x="262" y="-4">AI / DB</text>
+    <rect x="352" y="-13" width="18" height="10" rx="2" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c"/>
+    <text class="legend-text" x="376" y="-4">Stream / Bus</text>
+    <rect x="500" y="-13" width="18" height="10" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185"/>
+    <text class="legend-text" x="524" y="-4">Security</text>
+    <text class="tiny" x="1035" y="-4">Generated from repository structure for README embedding</text>
+  </g>
+</svg>
